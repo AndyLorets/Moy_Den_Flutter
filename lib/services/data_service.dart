@@ -123,9 +123,12 @@ class DataService {
     final study = todayStudy;
     return [
       const TaskItem(id: 'm_pose', text: TaskTexts.pose, tipKeys: ['pose']),
-      const TaskItem(id: 'm_breath', text: TaskTexts.breath, tipKeys: ['breath']),
-      const TaskItem(id: 'm_vis', text: TaskTexts.visualization, tipKeys: ['m1']),
-      const TaskItem(id: 'm_affirm', text: TaskTexts.affirmation, tipKeys: ['m2']),
+      const TaskItem(
+          id: 'm_breath', text: TaskTexts.breath, tipKeys: ['breath']),
+      const TaskItem(
+          id: 'm_vis', text: TaskTexts.visualization, tipKeys: ['m1']),
+      const TaskItem(
+          id: 'm_affirm', text: TaskTexts.affirmation, tipKeys: ['m2']),
       TaskItem(
         id: study.taskId,
         text: study.label == 'Английский'
@@ -140,9 +143,21 @@ class DataService {
   }
 
   List<TaskItem> get dayTasks => const [
-        TaskItem(id: 'd_action', text: TaskTexts.jobAction, tipKeys: ['d1'], tag: 'поиск'),
-        TaskItem(id: 'd_wild', text: TaskTexts.wildCard, tipKeys: ['d2'], tag: 'разрыв'),
-        TaskItem(id: 'd_game', text: TaskTexts.ownGame, tipKeys: ['d3'], tag: 'игра'),
+        TaskItem(
+            id: 'd_action',
+            text: TaskTexts.jobAction,
+            tipKeys: ['d1'],
+            tag: 'поиск'),
+        TaskItem(
+            id: 'd_wild',
+            text: TaskTexts.wildCard,
+            tipKeys: ['d2'],
+            tag: 'разрыв'),
+        TaskItem(
+            id: 'd_game',
+            text: TaskTexts.ownGame,
+            tipKeys: ['d3'],
+            tag: 'игра'),
       ];
 
   List<TaskItem> get eveningTasks => const [
@@ -188,7 +203,8 @@ class DataService {
     try {
       final list = jsonDecode(json) as List;
       return list
-          .map((e) => TaskItem(id: e['id'] as String, text: e['text'] as String, isCustom: true))
+          .map((e) => TaskItem(
+              id: e['id'] as String, text: e['text'] as String, isCustom: true))
           .toList();
     } catch (_) {
       return [];
@@ -198,15 +214,22 @@ class DataService {
   void addCustomTask(String phase, String text) {
     final key = 'cu_$phase';
     final tasks = getCustomTasks(phase);
-    final newTask = {'id': 'cu_${DateTime.now().millisecondsSinceEpoch}', 'text': text};
-    final encoded = jsonEncode([...tasks.map((t) => {'id': t.id, 'text': t.text}), newTask]);
+    final newTask = {
+      'id': 'cu_${DateTime.now().millisecondsSinceEpoch}',
+      'text': text
+    };
+    final encoded = jsonEncode([
+      ...tasks.map((t) => {'id': t.id, 'text': t.text}),
+      newTask
+    ]);
     _p.setString(key, encoded);
   }
 
   void removeCustomTask(String phase, String id) {
     final key = 'cu_$phase';
     final tasks = getCustomTasks(phase).where((t) => t.id != id).toList();
-    _p.setString(key, jsonEncode(tasks.map((t) => {'id': t.id, 'text': t.text}).toList()));
+    _p.setString(key,
+        jsonEncode(tasks.map((t) => {'id': t.id, 'text': t.text}).toList()));
   }
 
   // ── Выполнение задач ────────────────────────────────────
@@ -221,12 +244,24 @@ class DataService {
   // ── Прогресс ────────────────────────────────────────────
   List<String> get allTaskIds {
     final ids = <String>[];
-    for (final t in morningTasks) { ids.add(t.id); }
-    for (final t in dayTasks) { ids.add(t.id); }
-    for (final t in eveningTasks) { ids.add(t.id); }
-    for (final t in getCustomTasks('morning')) { ids.add(t.id); }
-    for (final t in getCustomTasks('day')) { ids.add(t.id); }
-    for (final t in getCustomTasks('evening')) { ids.add(t.id); }
+    for (final t in morningTasks) {
+      ids.add(t.id);
+    }
+    for (final t in dayTasks) {
+      ids.add(t.id);
+    }
+    for (final t in eveningTasks) {
+      ids.add(t.id);
+    }
+    for (final t in getCustomTasks('morning')) {
+      ids.add(t.id);
+    }
+    for (final t in getCustomTasks('day')) {
+      ids.add(t.id);
+    }
+    for (final t in getCustomTasks('evening')) {
+      ids.add(t.id);
+    }
     return ids;
   }
 
@@ -285,18 +320,22 @@ class DataService {
     if (json == null) return _defaultSchedule();
     try {
       final list = jsonDecode(json) as List;
-      return list.map((e) => ScheduleItem.fromJson(e as Map<String, dynamic>)).toList();
+      return list
+          .map((e) => ScheduleItem.fromJson(e as Map<String, dynamic>))
+          .toList();
     } catch (_) {
       return _defaultSchedule();
     }
   }
 
   void saveSchedule(List<ScheduleItem> items) {
-    _p.setString(PrefKeys.schedule, jsonEncode(items.map((e) => e.toJson()).toList()));
+    _p.setString(
+        PrefKeys.schedule, jsonEncode(items.map((e) => e.toJson()).toList()));
   }
 
   List<ScheduleItem> _defaultSchedule() => DefaultSchedule.items
-      .map((e) => ScheduleItem(id: e['id']!, time: e['time']!, label: e['label']!))
+      .map((e) =>
+          ScheduleItem(id: e['id']!, time: e['time']!, label: e['label']!))
       .toList();
 
   void resetSchedule() => _p.remove(PrefKeys.schedule);
