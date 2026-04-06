@@ -4,6 +4,8 @@ import '../constants/strings.dart';
 import '../widgets/tip_sheet.dart';
 import 'overview_screen.dart';
 import 'focus_mode_screen.dart';
+import '../services/energy_service.dart';
+import '../models/task.dart';
 
 // Фаза дня
 enum DayPhase { morning, day, evening }
@@ -80,6 +82,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return null;
   }
 
+  // Собираем все задачи для расчета энергии
+  List<Task> get _allTasksForEnergy {
+    final items = [
+      ..._ds.adaptedMorningTasks,
+      ..._ds.adaptedDayTasks,
+      ..._ds.eveningTasks
+    ];
+    return items
+        .map((t) => Task(
+              id: t.id,
+              title: t.text,
+              phase: Phase.day, // Заглушка, так как TaskItem не хранит фазу
+              priority: Priority.P1,
+              energyCost:
+                  15, // Базовая стоимость (пока не мигрировали DataService)
+              tags: [],
+              isCompleted: _ds.isTaskDone(t.id),
+            ))
+        .toList();
+  }
+
   void _refresh() => setState(() {});
 
   void _showTip(String key) {
@@ -90,13 +113,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final energyService = EnergyService.instance;
     final study = _ds.todayStudy;
-    final completed = _ds.completedCount;
-    final total = _ds.totalCount;
     final next = _nextTask;
     final streak = _ds.streak;
     final phase = _phase;
     final state = _ds.morningState;
+
+    final energyPercent = energyService.getEnergyPercent(_allTasksForEnergy);
 
     return Scaffold(
       body: SafeArea(
@@ -108,7 +132,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(height: 14),
 
             // ── Прогресс ───────────────────────────────────
-            _ProgressBar(completed: completed, total: total),
+            _EnergyBar(percent: energyPercent),
             const SizedBox(height: 20),
 
             // ── Баннер адаптации ───────────────────────────
@@ -414,39 +438,42 @@ class _StudyBadge extends StatelessWidget {
   }
 }
 
-// ── Прогресс бар ─────────────────────────────────────────────
-class _ProgressBar extends StatelessWidget {
-  final int completed;
-  final int total;
-  const _ProgressBar({required this.completed, required this.total});
+// ── Энерджи бар ──────────────────────────────────────────────
+class _EnergyBar extends StatelessWidget {
+  final double percent;
+  const _EnergyBar({required this.percent});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final progress = total > 0 ? completed / total : 0.0;
+    final energyService = EnergyService.instance;
+
+    final colorValue = energyService.getEnergyColor(percent);
+    final color = Color(colorValue is int ? colorValue : 0xFF4CAF50);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: progress,
-            minHeight: 6,
-            backgroundColor: theme.colorScheme.surfaceContainerHighest,
-            valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
-          ),
-        ),
-        const SizedBox(height: 6),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('$completed выполнено',
-                style: theme.textTheme.bodySmall
+            Text('Запас сил',
+                style: theme.textTheme.labelMedium
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-            Text('${total - completed} осталось',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            Text('${(percent * 100).toInt()}%',
+                style: theme.textTheme.labelLarge
+                    ?.copyWith(color: color, fontWeight: FontWeight.bold)),
           ],
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: percent,
+            minHeight: 8,
+            backgroundColor: theme.colorScheme.surfaceContainerHighest,
+            valueColor: AlwaysStoppedAnimation(color),
+          ),
         ),
       ],
     );

@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import '../services/data_service.dart';
 import '../widgets/tip_sheet.dart';
 import '../constants/strings.dart';
+import '../services/energy_service.dart';
+import '../models/task.dart';
+import '../models/state_config.dart';
 
 // Экран Focus Mode — одна задача на весь экран
 class FocusModeScreen extends StatelessWidget {
@@ -48,7 +51,8 @@ class FocusModeScreen extends StatelessWidget {
               if (task.tag != null) ...[
                 const SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(4),
@@ -65,7 +69,8 @@ class FocusModeScreen extends StatelessWidget {
                   onPressed: () {
                     final tip = Tips.all[task.tipKeys.first];
                     if (tip != null) {
-                      showTipSheet(context, title: tip['title']!, body: tip['body']!);
+                      showTipSheet(context,
+                          title: tip['title']!, body: tip['body']!);
                     }
                   },
                   icon: const Icon(Icons.help_outline, size: 16),
@@ -84,7 +89,8 @@ class FocusModeScreen extends StatelessWidget {
                   onPressed: () => Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => FocusSessionScreen(task: task, onDone: onDone),
+                      builder: (_) =>
+                          FocusSessionScreen(task: task, onDone: onDone),
                     ),
                   ),
                   icon: const Icon(Icons.timer_outlined),
@@ -117,7 +123,8 @@ class FocusSessionScreen extends StatefulWidget {
   final TaskItem task;
   final VoidCallback onDone;
 
-  const FocusSessionScreen({super.key, required this.task, required this.onDone});
+  const FocusSessionScreen(
+      {super.key, required this.task, required this.onDone});
 
   @override
   State<FocusSessionScreen> createState() => _FocusSessionScreenState();
@@ -251,9 +258,8 @@ class _FocusSessionScreenState extends State<FocusSessionScreen>
               AnimatedBuilder(
                 animation: _pulseController,
                 builder: (_, __) {
-                  final scale = _running
-                      ? 1.0 + _pulseController.value * 0.02
-                      : 1.0;
+                  final scale =
+                      _running ? 1.0 + _pulseController.value * 0.02 : 1.0;
                   return Transform.scale(
                     scale: scale,
                     child: SizedBox(
@@ -279,7 +285,9 @@ class _FocusSessionScreenState extends State<FocusSessionScreen>
                             _timeString,
                             style: theme.textTheme.displayMedium?.copyWith(
                               fontWeight: FontWeight.bold,
-                              fontFeatures: const [FontFeature.tabularFigures()],
+                              fontFeatures: const [
+                                FontFeature.tabularFigures()
+                              ],
                             ),
                           ),
                         ],
@@ -346,9 +354,47 @@ class CompletionScreen extends StatelessWidget {
     required this.onEnough,
   });
 
+  // Расчет текущего уровня энергии для адаптации кнопок
+  double _getCurrentEnergy() {
+    final ds = DataService.instance;
+    final items = [
+      ...ds.adaptedMorningTasks,
+      ...ds.adaptedDayTasks,
+      ...ds.eveningTasks
+    ];
+    final tasks = items
+        .map((t) => Task(
+              id: t.id,
+              title: t.text,
+              phase: Phase.day,
+              priority: Priority.P1,
+              energyCost: 15,
+              tags: [],
+              isCompleted: ds.isTaskDone(t.id),
+            ))
+        .toList();
+    return EnergyService.instance.getEnergyPercent(tasks);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final energy = _getCurrentEnergy();
+    final config = EnergyService.instance.currentConfig;
+
+    // Логика: если энергии мало (<30%) или режим Усталости,
+    // предлагаем закончить как основное действие.
+    final lowEnergy = energy < 0.3 || config.state == EnergyState.fatigue;
+
+    String message = 'Ты сделал шаг.';
+    if (energy < 0.1) {
+      message = 'Лимит исчерпан. Пора восстановиться.';
+    } else if (lowEnergy) {
+      message = 'Хорошая работа. Можно остановиться.';
+    } else if (config.state == EnergyState.excited) {
+      message = 'Отличный темп! Идем на разгон?';
+    }
+
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -360,7 +406,7 @@ class CompletionScreen extends StatelessWidget {
               Text('✓', style: theme.textTheme.displayLarge),
               const SizedBox(height: 24),
               Text(
-                'Ты сделал шаг.',
+                message,
                 style: theme.textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -377,18 +423,30 @@ class CompletionScreen extends StatelessWidget {
               const Spacer(),
               SizedBox(
                 width: double.infinity,
-                child: FilledButton(
-                  onPressed: onAnother,
-                  child: const Text('Ещё одно'),
-                ),
+                child: lowEnergy
+                    ? OutlinedButton(
+                        onPressed: onAnother,
+                        child: const Text('Ещё одно'),
+                      )
+                    : FilledButton(
+                        onPressed: onAnother,
+                        child: const Text('Ещё одно'),
+                      ),
               ),
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: onEnough,
-                  child: const Text('Достаточно на сегодня'),
-                ),
+                child: lowEnergy
+                    ? FilledButton(
+                        onPressed: onEnough,
+                        style: FilledButton.styleFrom(
+                            backgroundColor: theme.colorScheme.secondary),
+                        child: const Text('Достаточно на сегодня'),
+                      )
+                    : OutlinedButton(
+                        onPressed: onEnough,
+                        child: const Text('Достаточно на сегодня'),
+                      ),
               ),
             ],
           ),
