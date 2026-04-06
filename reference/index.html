@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f0f13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Мой день</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0f0f13; --surf:#1a1a24; --surf2:#22222f;
+  --brd:#2e2e3e; --brd2:#3a3a4e;
+  --txt:#f0eee8; --txt2:#b8b4aa; --mut:#6b6880;
+  --acc:#c8a96e; --acc-s:rgba(200,169,110,.13);
+  --grn:#5a9e72; --grn-s:rgba(90,158,114,.13);
+  --red:#d45c5c; --red-s:rgba(212,92,92,.13);
+  --vio:#8b7fd4; --vio-s:rgba(139,127,212,.13);
+  --blu:#5b8dd9; --blu-s:rgba(91,141,217,.13);
+  --sbot:env(safe-area-inset-bottom,0px);
+  --nav-w:220px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+@supports(height:100dvh){body{height:100dvh;}}
+body{background:var(--bg);color:var(--txt);font-family:'Inter',sans-serif;display:flex;flex-direction:column;}
+
+/* ══ MOBILE LAYOUT ══ */
+.app{display:flex;flex-direction:column;height:100%;max-width:480px;margin:0 auto;width:100%;overflow:hidden;}
+
+/* ══ SCREENS ══ */
+.scr{display:none;flex:1;flex-direction:column;min-height:0;overflow:hidden;}
+.scr.on{display:flex;}
+
+/* Screen scrollable wrapper */
+.scr-scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:none;}
+
+/* ══ TOPBAR (mobile) ══ */
+.topbar{padding:48px 18px 12px;background:var(--bg);flex-shrink:0;border-bottom:1px solid var(--brd);}
+.tb-row{display:flex;align-items:center;justify-content:space-between;}
+.tb-date{font-size:12px;color:var(--mut);}
+.tb-streak{font-size:13px;color:var(--acc);font-weight:600;}
+.tb-title{font-family:'Lora',serif;font-size:21px;font-weight:600;margin-top:4px;}
+.study-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;margin-top:6px;}
+.pill-eng{background:var(--grn-s);color:var(--grn);}
+.pill-unity{background:var(--blu-s);color:var(--blu);}
+.pill-ai{background:var(--vio-s);color:var(--vio);}
+.pill-dot{width:5px;height:5px;border-radius:50%;background:currentColor;}
+.prog-wrap{margin-top:8px;}
+.prog-track{height:3px;background:var(--brd);border-radius:2px;overflow:hidden;}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--acc),var(--grn));border-radius:2px;transition:width .4s ease;}
+.prog-row{display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:var(--mut);}
+
+/* PHASE TABS (mobile) */
+.ptabs{display:flex;gap:8px;padding:10px 14px;flex-shrink:0;background:var(--bg);border-bottom:1px solid var(--brd);}
+.ptab{flex:1;padding:9px 4px;border-radius:12px;border:1px solid var(--brd);background:var(--surf);font-size:11px;font-weight:600;text-align:center;cursor:pointer;transition:all .2s;color:var(--mut);}
+.ptab.mor.on{background:rgba(212,168,75,.15);border-color:#d4a84b;color:#d4a84b;}
+.ptab.day.on{background:var(--grn-s);border-color:var(--grn);color:var(--grn);}
+.ptab.eve.on{background:var(--vio-s);border-color:var(--vio);color:var(--vio);}
+
+/* PHASE CONTENT (mobile) */
+.pcon{display:none;flex-direction:column;padding:12px 14px 32px;}
+.pcon.on{display:flex;}
+
+/* BOTTOM NAV (mobile) */
+.bnav{display:flex;background:var(--surf);border-top:1px solid var(--brd);padding:8px 0 calc(8px + var(--sbot));flex-shrink:0;z-index:10;position:relative;}
+.nbtn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 0;cursor:pointer;color:var(--mut);transition:color .15s;background:none;border:none;font-family:'Inter',sans-serif;}
+.nbtn.on{color:var(--acc);}
+.nicon{font-size:20px;line-height:1;}
+.nlbl{font-size:10px;font-weight:500;}
+
+/* ══ DESKTOP LAYOUT ══ */
+@media(min-width:768px){
+  body{flex-direction:row;overflow:hidden;}
+  .app{max-width:100%;flex-direction:row;height:100vh;}
+
+  /* Side nav */
+  .bnav{flex-direction:column;width:var(--nav-w);min-width:var(--nav-w);height:100%;border-top:none;border-right:1px solid var(--brd);padding:24px 0;order:-1;justify-content:flex-start;gap:4px;overflow-y:auto;}
+  .nbtn{flex-direction:row;justify-content:flex-start;gap:12px;padding:12px 20px;border-radius:10px;margin:0 10px;width:calc(100% - 20px);font-size:14px;}
+  .nbtn.on{background:var(--acc-s);color:var(--acc);}
+  .nicon{font-size:18px;}
+  .nlbl{font-size:13px;font-weight:500;}
+
+  /* Nav header */
+  .bnav::before{content:'Мой день';font-family:'Lora',serif;font-size:18px;font-weight:600;color:var(--txt);padding:0 20px 20px;display:block;border-bottom:1px solid var(--brd);margin-bottom:12px;width:100%;}
+
+  /* Screens fill rest */
+  .scr{flex:1;overflow:hidden;}
+
+  /* Topbar desktop */
+  .topbar{padding:28px 32px 16px;position:sticky;}
+
+  /* Day screen: 3 columns */
+  .day-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:0 24px 24px;flex:1;align-items:start;}
+  .day-col-wrap{display:flex;flex-direction:column;}
+  .day-col-title{font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:6px;}
+  .day-col-title.mor{color:#d4a84b;}
+  .day-col-title.day{color:var(--grn);}
+  .day-col-title.eve{color:var(--vio);}
+
+  /* Hide mobile-only elements on desktop */
+  .ptabs{display:none;}
+  .pcon{display:none !important;}
+  .day-cols-wrap{display:flex;flex-direction:column;flex:1;}
+
+  /* Desktop phase sections */
+  .dsk-phase{display:flex;flex-direction:column;}
+}
+
+/* ══ SHARED COMPONENTS ══ */
+.card{background:var(--surf);border-radius:16px;padding:14px 15px;margin-bottom:11px;overflow:hidden;}
+.card-lbl{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--mut);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.card-lbl.acc{color:var(--acc);}
+.card-lbl.grn{color:var(--grn);}
+.card-lbl.red{color:var(--red);}
+.card-lbl.vio{color:var(--vio);}
+.card-border-acc{border-left:3px solid var(--acc);}
+.card-border-vio{border-left:3px solid var(--vio);}
+
+.smysl-inp{width:100%;background:none;border:none;color:var(--txt);font-family:'Lora',serif;font-size:14px;font-style:italic;line-height:1.6;resize:none;outline:none;min-height:56px;overflow:hidden;}
+.smysl-inp::placeholder{color:var(--mut);}
+
+.conf-q{font-size:13px;color:var(--txt2);line-height:1.5;margin-bottom:10px;}
+.conf-btns{display:flex;gap:7px;flex-wrap:wrap;}
+.cbtn{flex:1;min-width:70px;padding:8px 4px;border-radius:10px;border:1px solid var(--brd2);background:var(--surf2);color:var(--mut);font-size:11px;font-weight:500;text-align:center;cursor:pointer;transition:all .15s;}
+.cbtn.cg{border-color:var(--grn);color:var(--grn);background:var(--grn-s);}
+.cbtn.cr{border-color:var(--red);color:var(--red);background:var(--red-s);}
+.cbtn.cy{border-color:var(--acc);color:var(--acc);background:var(--acc-s);}
+
+.chips{display:flex;flex-wrap:wrap;gap:7px;}
+.chip{padding:7px 12px;border-radius:20px;border:1px solid var(--brd2);background:var(--surf2);color:var(--mut);font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;}
+.chip.on{background:var(--acc-s);border-color:var(--acc);color:var(--acc);}
+
+.tipbtn{width:22px;height:22px;border-radius:50%;border:1px solid var(--brd2);background:var(--surf2);color:var(--mut);font-size:11px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-family:'Inter',sans-serif;}
+.tipbtn:active{background:var(--vio-s);border-color:var(--vio);color:var(--vio);}
+
+.task{display:flex;align-items:flex-start;gap:11px;padding:13px 15px;border-bottom:1px solid var(--brd);cursor:pointer;transition:background .15s;}
+.task:last-child{border-bottom:none;}
+.task:active,.task:hover{background:var(--surf2);}
+.task.done{opacity:.38;}
+.tcheck{width:22px;height:22px;min-width:22px;border-radius:50%;border:2px solid var(--brd2);flex-shrink:0;margin-top:1px;position:relative;transition:all .2s;}
+.task.done .tcheck{background:var(--grn);border-color:var(--grn);}
+.task.done .tcheck::after{content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;font-weight:700;}
+.tbody{flex:1;min-width:0;}
+.ttxt{font-size:14px;line-height:1.5;color:var(--txt);}
+.task.done .ttxt{text-decoration:line-through;color:var(--mut);}
+.ttag{display:inline-block;margin-top:4px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--mut);background:var(--surf2);padding:2px 7px;border-radius:4px;}
+
+.ctask{display:flex;align-items:flex-start;gap:11px;padding:13px 15px;border-bottom:1px solid var(--brd);}
+.ctask.done{opacity:.38;}
+.ctask.done .tcheck{background:var(--grn);border-color:var(--grn);}
+.ctask.done .tcheck::after{content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;font-weight:700;}
+.ctask.done .ttxt{text-decoration:line-through;color:var(--mut);}
+.delbtn{background:none;border:none;color:var(--mut);font-size:17px;padding:0 2px;cursor:pointer;flex-shrink:0;line-height:1;margin-top:2px;}
+.delbtn:active,.delbtn:hover{color:var(--red);}
+
+.add-row{display:flex;gap:7px;padding:10px 15px;border-top:1px solid var(--brd);}
+.add-inp{flex:1;background:var(--surf2);border:1px solid var(--brd2);border-radius:10px;color:var(--txt);font-family:'Inter',sans-serif;font-size:13px;padding:9px 11px;outline:none;}
+.add-inp::placeholder{color:var(--mut);}
+.add-sub{padding:9px 13px;background:var(--grn-s);border:1px solid var(--grn);border-radius:10px;color:var(--grn);font-size:15px;font-weight:700;cursor:pointer;}
+
+.motiv-btns{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+.mbtn{flex:1;min-width:120px;padding:11px 6px;border-radius:12px;border:1px solid var(--brd2);background:var(--surf2);color:var(--mut);font-size:12px;font-weight:500;text-align:center;cursor:pointer;transition:all .15s;}
+.mbtn.fear.on{border-color:var(--red);color:var(--red);background:var(--red-s);}
+.mbtn.free.on{border-color:var(--grn);color:var(--grn);background:var(--grn-s);}
+
+.affirm{background:var(--surf);border-radius:16px;border-left:3px solid var(--vio);padding:14px 16px;margin-bottom:11px;font-family:'Lora',serif;font-size:14px;font-style:italic;color:var(--txt2);line-height:1.7;}
+.tinp{width:100%;background:none;border:none;color:var(--txt);font-family:'Lora',serif;font-size:14px;font-style:italic;outline:none;line-height:1.6;}
+.tinp::placeholder{color:var(--mut);}
+
+/* GIST SYNC */
+.sync-status{display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:10px;}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--mut);flex-shrink:0;}
+.sync-dot.ok{background:var(--grn);}
+.sync-dot.err{background:var(--red);}
+.sync-dot.loading{background:var(--acc);animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+.token-inp{width:100%;background:var(--surf2);border:1px solid var(--brd2);border-radius:10px;color:var(--txt);font-family:'Inter',sans-serif;font-size:13px;padding:10px 12px;outline:none;margin-bottom:8px;}
+.token-inp::placeholder{color:var(--mut);}
+.token-inp:focus{border-color:var(--acc);}
+.sync-btns{display:flex;gap:8px;flex-wrap:wrap;}
+.syncbtn{flex:1;padding:10px 8px;background:var(--surf2);border:1px solid var(--brd2);border-radius:10px;color:var(--txt2);font-size:12px;font-weight:500;cursor:pointer;text-align:center;font-family:'Inter',sans-serif;white-space:nowrap;}
+.syncbtn:hover{border-color:var(--acc);color:var(--acc);}
+.syncbtn.primary{background:var(--acc-s);border-color:var(--acc);color:var(--acc);}
+
+.notif-card{background:var(--surf);border-radius:16px;padding:13px 15px;margin-bottom:11px;display:flex;align-items:center;gap:11px;}
+.notif-ico{font-size:20px;}
+.notif-body{flex:1;}
+.notif-title{font-size:13px;font-weight:600;margin-bottom:2px;}
+.notif-sub{font-size:11px;color:var(--mut);}
+.notif-btn{padding:7px 12px;background:var(--acc-s);border:1px solid var(--acc);border-radius:10px;color:var(--acc);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;}
+
+.reset-btn{display:block;width:100%;margin-top:4px;padding:13px;background:none;border:1px solid var(--brd2);border-radius:14px;color:var(--mut);font-family:'Inter',sans-serif;font-size:13px;cursor:pointer;}
+.reset-btn:hover{border-color:var(--red);color:var(--red);}
+
+/* SCHEDULE */
+.sc-topbar{padding:28px 24px 14px;flex-shrink:0;border-bottom:1px solid var(--brd);}
+.sc-title{font-family:'Lora',serif;font-size:21px;font-weight:600;}
+.sc-sub{font-size:12px;color:var(--mut);margin-top:3px;}
+.sc-wrap{padding:0 20px 80px;}
+.sc-row{display:flex;align-items:center;gap:11px;padding:13px 0;border-bottom:1px solid var(--brd);}
+.sc-time{background:none;border:none;border-bottom:1px solid transparent;color:var(--acc);font-family:'Inter',sans-serif;font-size:13px;font-weight:600;width:50px;outline:none;padding:0;}
+.sc-time:focus{border-bottom-color:var(--acc);}
+.sc-lbl{flex:1;background:none;border:none;color:var(--txt);font-family:'Inter',sans-serif;font-size:14px;outline:none;padding:0;}
+.sc-lbl::placeholder{color:var(--mut);}
+.sc-del{background:none;border:none;color:var(--mut);font-size:18px;cursor:pointer;padding:0 2px;}
+.sc-del:hover{color:var(--red);}
+.sc-add{display:flex;gap:8px;margin-top:14px;}
+.sc-add-t{width:68px;background:var(--surf);border:1px solid var(--brd2);border-radius:10px;color:var(--txt);font-family:'Inter',sans-serif;font-size:13px;padding:10px 9px;outline:none;}
+.sc-add-l{flex:1;background:var(--surf);border:1px solid var(--brd2);border-radius:10px;color:var(--txt);font-family:'Inter',sans-serif;font-size:13px;padding:10px 12px;outline:none;}
+.sc-add-l::placeholder,.sc-add-t::placeholder{color:var(--mut);}
+.sc-add-btn{padding:10px 14px;background:var(--grn-s);border:1px solid var(--grn);border-radius:10px;color:var(--grn);font-size:15px;font-weight:700;cursor:pointer;}
+.sc-rst{display:block;width:100%;margin-top:14px;padding:12px;background:none;border:1px solid var(--brd2);border-radius:12px;color:var(--mut);font-family:'Inter',sans-serif;font-size:13px;cursor:pointer;text-align:center;}
+.sc-rst:hover{border-color:var(--red);color:var(--red);}
+
+/* REF */
+.ref-topbar{padding:28px 24px 14px;flex-shrink:0;border-bottom:1px solid var(--brd);}
+.ref-title{font-family:'Lora',serif;font-size:21px;font-weight:600;}
+.ref-scroll{padding:0 20px 80px;max-width:720px;}
+.rh1{font-family:'Lora',serif;font-size:17px;font-weight:600;padding-bottom:8px;border-bottom:1px solid var(--brd);margin:18px 0 10px;}
+.rh2{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--acc);margin:14px 0 7px;}
+.rbox{background:var(--surf);border-radius:12px;padding:13px 14px;margin-bottom:8px;font-size:13px;line-height:1.75;color:var(--txt2);}
+.rbox strong{color:var(--txt);}
+.rfact{background:var(--grn-s);border-left:3px solid var(--grn);border-radius:0 10px 10px 0;padding:10px 13px;margin:5px 0;font-size:13px;line-height:1.65;color:var(--txt2);}
+.rdanger{background:var(--red-s);border-left:3px solid var(--red);border-radius:0 10px 10px 0;padding:10px 13px;margin:5px 0;font-size:13px;line-height:1.65;color:var(--txt2);}
+.rgold{background:var(--acc-s);border-left:3px solid var(--acc);border-radius:0 10px 10px 0;padding:10px 13px;margin:5px 0;font-size:13px;line-height:1.65;color:var(--txt2);}
+.rstep{display:flex;gap:11px;padding:5px 0;font-size:13px;line-height:1.65;color:var(--txt2);}
+.rstep-n{font-family:'Lora',serif;font-size:15px;color:var(--acc);font-weight:600;min-width:18px;}
+.ritalic{font-family:'Lora',serif;font-style:italic;font-size:14px;color:var(--txt2);line-height:1.7;padding:11px 14px;background:var(--surf);border-radius:12px;margin:7px 0;}
+.rrule{border:none;border-top:1px solid var(--brd);margin:16px 0;}
+
+/* SHEET */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;opacity:0;pointer-events:none;transition:opacity .25s;}
+.overlay.on{opacity:1;pointer-events:auto;}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:51;background:var(--surf);border-radius:20px 20px 0 0;padding:18px 20px calc(20px + var(--sbot));transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);max-width:480px;margin:0 auto;}
+.sheet.on{transform:translateY(0);}
+@media(min-width:768px){
+  .sheet{max-width:480px;left:50%;right:auto;transform:translateX(-50%) translateY(100%);border-radius:20px 20px 0 0;}
+  .sheet.on{transform:translateX(-50%) translateY(0);}
+}
+.sheet-handle{width:36px;height:4px;background:var(--brd2);border-radius:2px;margin:0 auto 14px;}
+.sheet-ttl{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--vio);margin-bottom:8px;}
+.sheet-txt{font-size:14px;line-height:1.75;color:var(--txt2);}
+
+.toast{position:fixed;bottom:calc(64px + var(--sbot) + 8px);left:50%;transform:translateX(-50%);background:var(--surf);border:1px solid var(--brd2);color:var(--txt);font-size:12px;padding:9px 18px;border-radius:20px;white-space:nowrap;opacity:0;transition:opacity .3s;pointer-events:none;z-index:40;}
+.toast.on{opacity:1;}
+@media(min-width:768px){.toast{bottom:20px;}}
+
+/* Desktop day columns */
+@media(min-width:768px){
+  .day-desktop{display:flex;flex-direction:column;flex:1;overflow:hidden;}
+  .day-desktop .topbar{padding:24px 32px 14px;}
+  .cols-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:16px 24px 24px;align-items:start;}
+  .col-head{font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:6px;}
+  .col-head.mor{color:#d4a84b;}
+  .col-head.day{color:var(--grn);}
+  .col-head.eve{color:var(--vio);}
+  .col-head-dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+  .mobile-only{display:none !important;}
+  .desk-smysl{padding:12px 24px 0;max-width:100%;}
+  .desk-smysl .card{border-radius:12px;margin-bottom:0;}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- ДЕНЬ -->
+  <div class="scr on" id="scr-day">
+    <div id="day-topbar"></div>
+    <div id="day-tabs"></div>
+    <div id="day-content" style="flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;"></div>
+  </div>
+
+  <!-- ГРАФИК -->
+  <div class="scr" id="scr-schedule">
+    <div class="sc-topbar"><div class="sc-title">График дня</div><div class="sc-sub">нажми на поле чтобы изменить</div></div>
+    <div class="scr-scroll"><div class="sc-wrap" id="sc-wrap"></div></div>
+  </div>
+
+  <!-- СПРАВКА -->
+  <div class="scr" id="scr-ref">
+    <div class="ref-topbar"><div class="ref-title">Справка</div></div>
+    <div class="scr-scroll"><div class="ref-scroll">
+      <div class="rh1">Корень проблемы</div>
+      <div class="rbox">Я пережил тяжёлый год на 300–500$. Тело и мозг запомнили угрозу. Теперь когда думаю о работе или деньгах — мозг включает режим тревоги.<br><br><strong>Это не слабость.</strong> Это защитный механизм. Ситуация изменилась — работа есть — но мозг живёт в том году.</div>
+      <div class="rgold"><strong>Важно:</strong> это не лень. Это выученная реакция, которую можно перезаписать через конкретные действия каждый день.</div>
+      <hr class="rrule">
+      <div class="rh1">Три страха</div>
+      <div class="rh2">«Проект закончится»</div>
+      <div class="rfact"><strong>Факт:</strong> тревога не уменьшает риск — она забирает энергию для поиска.</div>
+      <div class="rbox"><strong>Помогает:</strong> одно действие в день — отклик, письмо, обновление профиля.</div>
+      <div class="rh2">«ИИ заменит меня»</div>
+      <div class="rfact"><strong>Реальность:</strong> Unity + AI = редкое и ценное сочетание. Это преимущество, не угроза.</div>
+      <div class="rh2">«Не найду лучшую работу»</div>
+      <div class="rdanger"><strong>Провал собеседования ≠ «я не гожусь».</strong> Это данные. Что спрашивали? Теперь знаю что учить.</div>
+      <hr class="rrule">
+      <div class="rh1">Техники</div>
+      <div class="rh2">Факт vs Интерпретация</div>
+      <div class="rbox">Факт — что происходит РЕАЛЬНО прямо сейчас?<br>Интерпретация — что добавляет страх?<br><br>Пример: Факт — «пишу код». Интерпретация — «всё рухнет». Заметил разницу — уже легче.</div>
+      <div class="rh2">Заземление (10 секунд)</div>
+      <div class="rbox">Почувствуй стопы на полу. Вес тела на стуле. Замечай 10 секунд. 10 раз в день.</div>
+      <div class="rh2">Протокол при панике</div>
+      <div class="rstep"><span class="rstep-n">1</span><span>Стоп. Вслух: «Прямо сейчас я в безопасности.»</span></div>
+      <div class="rstep"><span class="rstep-n">2</span><span>Вдох 4 → задержка 4 → выдох 6. Три раза.</span></div>
+      <div class="rstep"><span class="rstep-n">3</span><span>Факт vs интерпретация.</span></div>
+      <div class="rstep"><span class="rstep-n">4</span><span>Одно маленькое действие прямо сейчас.</span></div>
+      <div class="rstep"><span class="rstep-n">5</span><span>Вспомни: я уже пережил худшее. Тот год закончился.</span></div>
+      <hr class="rrule">
+      <div class="rh1">Мышление</div>
+      <div class="rh2">Действие → Мотивация</div>
+      <div class="rbox">Мотивация приходит ПОСЛЕ действия, не до. Просто открой приложение. Ничего больше.</div>
+      <div class="rh2">Правило одного пропуска</div>
+      <div class="rgold">Пропустил день — не страшно. Никогда не пропускай два раза подряд.</div>
+      <div class="rh2">Страх (Юнг)</div>
+      <div class="rbox">Когда накрывает: «Я понимаю почему ты здесь. Тот год был тяжёлым. Но сейчас другая ситуация.»</div>
+      <div class="ritalic">Сопротивление страху усиливает его. Признание — уменьшает.</div>
+      <div class="rh2">Смысл (Франкл)</div>
+      <div class="ritalic">«У того кто имеет зачем жить, можно вынести почти любое как.»</div>
+    </div>
+  </div><!-- /scr-scroll -->
+  </div>
+  <div class="scr" id="scr-settings">
+    <div class="sc-topbar"><div class="sc-title">Настройки</div><div class="sc-sub">синхронизация и уведомления</div></div>
+    <div class="scr-scroll">
+    <div class="sc-wrap" style="padding-bottom:80px;">
+      <div class="card">
+        <div class="card-lbl acc">// GitHub Gist — синхронизация</div>
+        <div class="sync-status"><div class="sync-dot" id="sync-dot"></div><span id="sync-status-txt">Не настроено</span></div>
+        <input class="token-inp" id="token-inp" type="text" placeholder="Вставь GitHub Token (ghp_...)">
+        <button class="syncbtn primary" onclick="saveTokenFromInput()" style="width:100%;margin-bottom:8px;">💾 Сохранить токен</button>
+        <div style="font-size:11px;color:var(--mut);margin-bottom:10px;">Токен хранится только на этом устройстве. Нужен scope: gist.</div>
+        <div class="sync-btns">
+          <button class="syncbtn primary" onclick="syncToGist()">☁️ Сохранить в облако</button>
+          <button class="syncbtn" onclick="syncFromGist()">📥 Загрузить из облака</button>
+        </div>
+        <div style="margin-top:8px;">
+          <button class="syncbtn" onclick="autoSyncToggle()" id="autosync-btn" style="width:100%;">⚡ Автосинхронизация: выкл</button>
+        </div>
+      </div>
+      <div class="card" id="notif-wrap"></div>
+      <div class="card">
+        <div class="card-lbl red">// сброс</div>
+        <button class="reset-btn" onclick="resetDay()">Сбросить сегодняшний день</button>
+      </div>
+    </div>
+    </div><!-- /scr-scroll -->
+  </div>
+
+  <!-- NAV -->
+  <nav class="bnav">
+    <button class="nbtn on" id="nb-day"      onclick="switchScr('day',this)"><span class="nicon">📋</span><span class="nlbl">День</span></button>
+    <button class="nbtn"    id="nb-schedule" onclick="switchScr('schedule',this)"><span class="nicon">🗓</span><span class="nlbl">График</span></button>
+    <button class="nbtn"    id="nb-ref"      onclick="switchScr('ref',this)"><span class="nicon">📖</span><span class="nlbl">Справка</span></button>
+    <button class="nbtn"    id="nb-settings" onclick="switchScr('settings',this)"><span class="nicon">⚙️</span><span class="nlbl">Настройки</span></button>
+  </nav>
+
+</div><!-- /app -->
+
+<!-- SHEET -->
+<div class="overlay" id="overlay" onclick="closeSheet()"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-ttl" id="sheet-ttl"></div>
+  <div class="sheet-txt" id="sheet-txt"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ══ STORAGE ══
+const KEY='moiden_v4';
+let ST={};
+try{ST=JSON.parse(localStorage.getItem(KEY)||'{}');}catch(e){}
+function sv(k,v){ST[k]=v;persist();showToast('Сохранено');if(ld('autosync',false))syncToGist(true);}
+function ld(k,d){return ST[k]!==undefined?ST[k]:d;}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify(ST));}catch(e){}}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ══ TIPS ══
+const TIPS={
+  pose: {t:'Поза силы',b:'За 2 мин в позе силы (ноги шире плеч, руки вверх) снижается кортизол и повышается уверенность. Это физиология, не аффирмация.'},
+  breath:{t:'Дыхание',b:'Длинный выдох (8 сек) активирует парасимпатическую нервную систему. Три цикла вдох 4 → задержка 4 → выдох 8 снижают тревогу за 60 секунд.'},
+  eng:  {t:'Английский',b:'10 минут до соцсетей. Первое действие дня задаёт тон всему остальному.'},
+  unity:{t:'Unity каждый день',b:'10 минут = 60 часов в год. Маленький шаг каждый день лучше большого рывка раз в неделю.'},
+  ai:   {t:'ИИ — усиление',b:'Unity + AI = редкое и ценное сочетание. Те кто используют AI вытесняют тех кто нет.'},
+  m1:   {t:'Эмоция — ключ',b:'Мысль без эмоции бессильна. Почувствуй спокойствие человека у которого уже есть стабильность.'},
+  m2:   {t:'Внимание = энергия',b:'Аффирмация переключает нейронный фильтр с «опасность» на «поиск возможностей».'},
+  mc:   {t:'Бессознательное',b:'Бессознательное управляет 95% решений. Этот блок помогает поймать внутренний конфликт до начала дня.'},
+  d1:   {t:'Одно действие',b:'Не «найти работу» — а одно маленькое действие сегодня. Маленькие шаги накапливаются.'},
+  d2:   {t:'Разрыв паттерна',b:'Новый маршрут, кафе, рисование — сигнал мозгу: «система меняется». Открывает доступ к новым идеям.'},
+  d3:   {t:'Намерение важнее',b:'Час работы из страха и из уверенности дают разный результат.'},
+  dm:   {t:'Чистое намерение',b:'Действие из страха транслирует нехватку. Из интереса и свободы — открывает возможности.'},
+  e2:   {t:'Называние снижает',b:'Назвать страх = снизить его власть. Affect labeling: «я боюсь X» активирует префронтальную кору.'},
+  e3:   {t:'Отпускание',b:'Чем сильнее цепляешься из страха — тем сильнее сигнал нехватки. Расслабление перед сном открывает поток.'},
+  emo:  {t:'Эмоциональный заряд',b:'В дни с «Уверенностью» — больше реальных действий. «Тревога» — сигнал что мозг в режиме угрозы.'},
+};
+
+// ══ STUDY ══
+function studyIdx(){
+  let e=ld('epoch','');if(!e){e=new Date().toDateString();sv('epoch',e);}
+  return((Math.floor((Date.now()-new Date(e))/86400000)%3)+3)%3;
+}
+const STUDY=[
+  {k:'eng',  label:'Английский', cls:'pill-eng',   tip:'eng',   tag:'язык'},
+  {k:'unity',label:'Unity',       cls:'pill-unity', tip:'unity', tag:'unity'},
+  {k:'ai',   label:'ИИ / Claude', cls:'pill-ai',    tip:'ai',    tag:'ai'},
+];
+
+// ══ TASKS ══
+const TASKS={
+  morning:[
+    {id:'m_pose',  text:'Поза силы 2 мин — ноги шире плеч, руки вверх',tips:['pose']},
+    {id:'m_breath',text:'Дыхание: вдох 4 → задержка 4 → выдох 8 (3 цикла)',tips:['breath']},
+    {id:'m_vis',   text:'5 мин в состоянии спокойствия: почувствуй человека у которого уже есть стабильность',tips:['m1']},
+    {id:'m_affirm',text:'Аффирмация: «Угрозы нет, я ищу возможности»',tips:['m2']},
+  ],
+  day:[
+    {id:'d_action',text:'Одно действие по поиску работы: отклик / письмо / обновление профиля',tips:['d1'],tag:'поиск'},
+    {id:'d_wild',  text:'Дикая карта: новый маршрут / кафе / 15 мин рисование',tips:['d2'],tag:'разрыв'},
+    {id:'d_game',  text:'10 мин над своей игрой из состояния «я уже успешный разработчик»',tips:['d3'],tag:'игра'},
+  ],
+  evening:[
+    {id:'e_log',   text:'Лог дня: контакты, часы над игрой — конкретные цифры',tips:[]},
+    {id:'e_shadow',text:'Дебаггинг тени: что не сделал из-за страха?',tips:['e2']},
+    {id:'e_let',   text:'Отпустить ожидания перед сном',tips:['e3']},
+  ],
+};
+
+// ══ CUSTOM ══
+function getCU(p){try{return JSON.parse(ld('cu_'+p,'[]'));}catch(e){return[];}}
+function setCU(p,a){sv('cu_'+p,JSON.stringify(a));}
+function addCU(phase){
+  const inp=document.getElementById('add-'+phase);
+  const text=inp.value.trim();if(!text)return;
+  const arr=getCU(phase);arr.push({id:'cu_'+Date.now(),text});
+  setCU(phase,arr);inp.value='';
+  renderAll();
+}
+function delCU(phase,id){setCU(phase,getCU(phase).filter(t=>t.id!==id));renderAll();}
+function toggleCU(phase,id){sv('t_'+id,!ld('t_'+id,false));renderAll();}
+function toggleFixed(id){sv('t_'+id,!ld('t_'+id,false));renderAll();}
+
+// ══ RENDER TASK LIST ══
+function taskListHTML(phase){
+  const si=studyIdx();const s=STUDY[si];
+  let fixed=[...TASKS[phase]];
+  if(phase==='morning') fixed.push({id:'m_study_'+si,text:'10 мин — '+s.label,tips:[s.tip],tag:s.tag});
+  let h='';
+  fixed.forEach(function(t){
+    const done=ld('t_'+t.id,false);
+    const tips=(t.tips||[]).map(k=>'<button class="tipbtn" onclick="event.stopPropagation();showTip(\''+k+'\')" >?</button>').join('');
+    h+='<div class="task'+(done?' done':'')+'" onclick="toggleFixed(\''+t.id+'\')">';
+    h+='<div class="tcheck"></div><div class="tbody"><div class="ttxt">'+t.text+'</div>';
+    if(t.tag)h+='<span class="ttag">'+t.tag+'</span>';
+    h+='</div>'+tips+'</div>';
+  });
+  getCU(phase).forEach(function(t){
+    const done=ld('t_'+t.id,false);
+    h+='<div class="ctask'+(done?' done':'')+'">';
+    h+='<div class="tcheck" style="cursor:pointer;position:relative;" onclick="toggleCU(\''+phase+'\',\''+t.id+'\')"></div>';
+    h+='<div class="tbody" style="cursor:pointer;flex:1;" onclick="toggleCU(\''+phase+'\',\''+t.id+'\')">';
+    h+='<div class="ttxt">'+esc(t.text)+'</div></div>';
+    h+='<button class="delbtn" onclick="delCU(\''+phase+'\',\''+t.id+'\')">✕</button></div>';
+  });
+  h+='<div class="add-row"><input class="add-inp" id="add-'+phase+'" placeholder="Добавить задачу..." onkeydown="if(event.key===\'Enter\')addCU(\''+phase+'\')">';
+  h+='<button class="add-sub" onclick="addCU(\''+phase+'\')">+</button></div>';
+  return h;
+}
+
+// ══ PROGRESS ══
+function getAllIds(){
+  const si=studyIdx();
+  const ids=['m_study_'+si];
+  ['morning','day','evening'].forEach(p=>{TASKS[p].forEach(t=>ids.push(t.id));getCU(p).forEach(t=>ids.push(t.id));});
+  return ids;
+}
+function updateProg(){
+  const ids=getAllIds();
+  const done=ids.filter(id=>ld('t_'+id,false)).length;
+  const total=ids.length;
+  document.querySelectorAll('.prog-fill').forEach(f=>f.style.width=(total?Math.round(done/total*100):0)+'%');
+  document.querySelectorAll('.prog-done').forEach(e=>e.textContent=done+' выполнено');
+  document.querySelectorAll('.prog-left').forEach(e=>e.textContent=(total-done)+' осталось');
+  if(done===total&&total>0){
+    const today=new Date().toDateString();
+    if(ld('last_day','')!==today){
+      persist();
+      const ns=ld('streak',0)+1;ST['streak']=ns;ST['last_day']=today;persist();
+      document.querySelectorAll('.tb-streak').forEach(e=>e.textContent='🔥 '+ns);
+    }
+  }
+}
+
+// ══ RENDER DAY ══
+function isDesktop(){return window.innerWidth>=768;}
+
+function renderDay(){
+  const d=new Date();
+  const DAYS=['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'];
+  const MONTHS=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+  const streak=ld('streak',0);
+  const si=studyIdx();const s=STUDY[si];
+  const cur={state:ld('state',''),conflict:ld('conflict',''),motiv:ld('motiv','')};
+
+  const stateChips=['Спокойствие','Уверенность','Тревога','Воодушевление','Усталость','Механически']
+    .map(x=>'<div class="chip'+(cur.state===x?' on':'')+'" data-v="'+x+'" onclick="selState(this)">'+x+'</div>').join('');
+
+  const confOpts=[{v:'align',l:'✓ Ок',c:'cg'},{v:'conflict',l:'⚡ Конфликт',c:'cr'},{v:'unsure',l:'? Не уверен',c:'cy'}]
+    .map(o=>'<div class="cbtn'+(cur.conflict===o.v?' '+o.c:'')+'" data-v="'+o.v+'" data-cls="'+o.c+'" onclick="selConflict(this)">'+o.l+'</div>').join('');
+
+  const topbarHTML=
+    '<div class="topbar">'+
+      '<div class="tb-row">'+
+        '<div class="tb-date">'+DAYS[d.getDay()]+', '+d.getDate()+' '+MONTHS[d.getMonth()]+'</div>'+
+        '<div class="tb-streak">🔥 '+streak+'</div>'+
+      '</div>'+
+      '<div class="tb-title">Мой день</div>'+
+      '<div class="study-pill '+s.cls+'"><div class="pill-dot"></div>Сегодня: '+s.label+'</div>'+
+      '<div class="prog-wrap">'+
+        '<div class="prog-track"><div class="prog-fill" style="width:0%"></div></div>'+
+        '<div class="prog-row"><span class="prog-done">0 выполнено</span><span class="prog-left">0 осталось</span></div>'+
+      '</div>'+
+    '</div>';
+
+  const smyslHTML=
+    '<div class="card card-border-acc">'+
+      '<div class="card-lbl acc">// зачем я это делаю</div>'+
+      '<textarea class="smysl-inp" rows="3" placeholder="Семья, которую обеспечиваю. Игра, которую строю. Студия, к которой иду..." onchange="sv(\'smysl\',this.value)" oninput="this.style.height=\'auto\';this.style.height=this.scrollHeight+\'px\'">'+esc(ld('smysl',''))+'</textarea>'+
+    '</div>';
+
+  const conflictHTML=
+    '<div class="card">'+
+      '<div class="card-lbl">// конфликт бессознательного <button class="tipbtn" onclick="showTip(\'mc\')">?</button></div>'+
+      '<div class="conf-q">Прямо сейчас, когда думаю о своей цели — что я чувствую глубоко внутри?</div>'+
+      '<div class="conf-btns">'+confOpts+'</div>'+
+    '</div>';
+
+  const stateHTML=
+    '<div class="card">'+
+      '<div class="card-lbl">// состояние утра <button class="tipbtn" onclick="showTip(\'emo\')">?</button></div>'+
+      '<div class="chips" id="chips">'+stateChips+'</div>'+
+    '</div>';
+
+  const motivHTML=
+    '<div class="card">'+
+      '<div class="card-lbl">// из какого состояния действовал? <button class="tipbtn" onclick="showTip(\'dm\')">?</button></div>'+
+      '<div class="motiv-btns">'+
+        '<div class="mbtn fear'+(cur.motiv==='fear'?' on':'')+'" data-v="fear" onclick="selMotiv(this)">😰 Из страха</div>'+
+        '<div class="mbtn free'+(cur.motiv==='free'?' on':'')+'" data-v="free" onclick="selMotiv(this)">🚀 Из свободы</div>'+
+      '</div>'+
+    '</div>';
+
+  const affirmHTML='<div class="affirm">«Да, я боюсь потерять стабильность. Но я уже доказал, что умею выживать. Мой опыт — моя страховка.»</div>';
+  const fearHTML='<div class="card"><div class="card-lbl red">// что не сделал из-за страха?</div><input class="tinp" id="fear-inp" type="text" placeholder="Назови это — уже станет легче..." value="'+esc(ld('fear',''))+'" onchange="sv(\'fear\',this.value)"></div>';
+  const insightHTML='<div class="card"><div class="card-lbl grn">// один инсайт дня</div><input class="tinp" id="insight-inp" type="text" placeholder="Что понял сегодня?" value="'+esc(ld('insight',''))+'" onchange="sv(\'insight\',this.value)"></div>';
+
+  if(isDesktop()){
+    document.getElementById('day-topbar').innerHTML='';
+    document.getElementById('day-tabs').innerHTML='';
+    document.getElementById('day-content').innerHTML=
+      topbarHTML+
+      '<div class="desk-smysl">'+smyslHTML+'</div>'+
+      '<div class="cols-grid">'+
+        '<div>'+
+          '<div class="col-head mor"><div class="col-head-dot"></div>Утро — Инициализация</div>'+
+          conflictHTML+stateHTML+
+          '<div class="card">'+taskListHTML('morning')+'</div>'+
+        '</div>'+
+        '<div>'+
+          '<div class="col-head day"><div class="col-head-dot"></div>День — Действие</div>'+
+          '<div class="card">'+taskListHTML('day')+'</div>'+
+          motivHTML+
+        '</div>'+
+        '<div>'+
+          '<div class="col-head eve"><div class="col-head-dot"></div>Вечер — Дебаггинг</div>'+
+          '<div class="card">'+taskListHTML('evening')+'</div>'+
+          affirmHTML+fearHTML+insightHTML+
+        '</div>'+
+      '</div>';
+  } else {
+    document.getElementById('day-topbar').innerHTML=topbarHTML;
+    document.getElementById('day-tabs').innerHTML=
+      '<div class="ptabs">'+
+        '<div class="ptab mor on" id="pt-mor" onclick="switchPhase(\'mor\')">☀️ Утро</div>'+
+        '<div class="ptab day" id="pt-day" onclick="switchPhase(\'day\')">⚡ День</div>'+
+        '<div class="ptab eve" id="pt-eve" onclick="switchPhase(\'eve\')">🌙 Вечер</div>'+
+      '</div>';
+    document.getElementById('day-content').innerHTML=
+      '<div class="pcon on" id="pc-mor">'+
+        smyslHTML+conflictHTML+stateHTML+
+        '<div class="card">'+taskListHTML('morning')+'</div>'+
+      '</div>'+
+      '<div class="pcon" id="pc-day">'+
+        '<div class="card">'+taskListHTML('day')+'</div>'+
+        motivHTML+
+      '</div>'+
+      '<div class="pcon" id="pc-eve">'+
+        '<div class="card">'+taskListHTML('evening')+'</div>'+
+        affirmHTML+fearHTML+insightHTML+
+      '</div>';
+  }
+  updateProg();
+  // auto-resize textareas
+  document.querySelectorAll('.smysl-inp').forEach(function(ta){ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';});
+}
+
+function renderAll(){
+  // save scroll position before re-render
+  var scrollTop=0;
+  var ph=window._activePhase||'mor';
+  var dc=document.getElementById('day-content');
+  if(dc)scrollTop=dc.scrollTop;
+  renderDay();
+  // restore active phase on mobile after re-render
+  if(window.innerWidth<768){
+    ['mor','day','eve'].forEach(function(p){
+      var pt=document.getElementById('pt-'+p);
+      var pcEl=document.getElementById('pc-'+p);
+      if(pt)pt.classList.toggle('on',p===ph);
+      if(pcEl)pcEl.classList.toggle('on',p===ph);
+    });
+  }
+  // restore scroll
+  var dcR=document.getElementById('day-content');
+  if(dcR)dcR.scrollTop=scrollTop;
+}
+
+// ══ SELECTORS ══
+function selState(el){const v=el.dataset.v;const nv=ld('state','')=== v?'':v;sv('state',nv);document.querySelectorAll('#chips .chip').forEach(c=>c.classList.toggle('on',c.dataset.v===nv));}
+function selConflict(el){const v=el.dataset.v;const cls=el.dataset.cls;const nv=ld('conflict','')=== v?'':v;sv('conflict',nv);el.closest('.conf-btns').querySelectorAll('.cbtn').forEach(c=>{c.className='cbtn';if(c.dataset.v===nv)c.classList.add(cls);});}
+function selMotiv(el){const v=el.dataset.v;const nv=ld('motiv','')=== v?'':v;sv('motiv',nv);document.querySelectorAll('.mbtn').forEach(b=>b.classList.remove('on'));if(nv)el.classList.add('on');}
+
+// ══ PHASE SWITCH (mobile) ══
+function switchPhase(ph){
+  window._activePhase=ph;
+  ['mor','day','eve'].forEach(function(p){
+    var pt=document.getElementById('pt-'+p);
+    var pc=document.getElementById('pc-'+p);
+    if(pt)pt.classList.remove('on');
+    if(pc)pc.classList.remove('on');
+  });
+  var pt=document.getElementById('pt-'+ph);
+  var pc=document.getElementById('pc-'+ph);
+  if(pt)pt.classList.add('on');
+  if(pc)pc.classList.add('on');
+}
+
+// ══ SCREEN SWITCH ══
+function switchScr(name,btn){
+  ['day','schedule','ref','settings'].forEach(n=>{const el=document.getElementById('scr-'+n);if(el)el.classList.remove('on');});
+  document.querySelectorAll('.nbtn').forEach(b=>b.classList.remove('on'));
+  const target=document.getElementById('scr-'+name);if(target)target.classList.add('on');
+  btn.classList.add('on');
+  if(name==='schedule')renderSchedule();
+  if(name==='settings')renderSettings();
+}
+
+// ══ TIP SHEET ══
+function showTip(key){const t=TIPS[key];if(!t)return;document.getElementById('sheet-ttl').textContent=t.t;document.getElementById('sheet-txt').textContent=t.b;document.getElementById('overlay').classList.add('on');document.getElementById('sheet').classList.add('on');}
+function closeSheet(){document.getElementById('overlay').classList.remove('on');document.getElementById('sheet').classList.remove('on');}
+
+// ══ SCHEDULE ══
+const DEF_SC=[
+  {id:'s1',time:'09:00',label:'Подъём → Поза силы 2 мин → Учёба 10 мин → Завтрак'},
+  {id:'s2',time:'10:00',label:'Работа (основной проект) — фокус без отвлечений'},
+  {id:'s3',time:'13:00',label:'Обед + прогулка 15 мин'},
+  {id:'s4',time:'14:00',label:'Работа (вторая половина)'},
+  {id:'s5',time:'18:00',label:'Поиск: LinkedIn / отклик / письмо'},
+  {id:'s6',time:'19:00',label:'Семья — ужин, время с близкими. Без телефона.'},
+  {id:'s7',time:'21:00',label:'Своя игра — 1 час. Каждый день хоть немного.'},
+  {id:'s8',time:'22:00',label:'Завершение дня. Без экранов.'},
+];
+function getSC(){try{return JSON.parse(ld('sc','null'))||DEF_SC;}catch(e){return DEF_SC;}}
+function saveSC(a){sv('sc',JSON.stringify(a));}
+function updSC(id,f,v){const r=getSC();const row=r.find(x=>x.id===id);if(row){row[f]=v;saveSC(r);}}
+function delSC(id){saveSC(getSC().filter(r=>r.id!==id));renderSchedule();}
+function resetSchedule(){if(confirm('Восстановить стандартный?')){sv('sc','null');renderSchedule();}}
+function addSC(){const t=document.getElementById('sc-nt').value.trim()||'--:--';const l=document.getElementById('sc-nl').value.trim();if(!l)return;const rows=getSC();rows.push({id:'sc_'+Date.now(),time:t,label:l});saveSC(rows);renderSchedule();}
+function renderSchedule(){
+  let h=getSC().map(r=>'<div class="sc-row"><input class="sc-time" value="'+esc(r.time)+'" onchange="updSC(\''+r.id+'\',\'time\',this.value)"><input class="sc-lbl" value="'+esc(r.label)+'" onchange="updSC(\''+r.id+'\',\'label\',this.value)" placeholder="Название..."><button class="sc-del" onclick="delSC(\''+r.id+'\')">✕</button></div>').join('');
+  h+='<div class="sc-add"><input class="sc-add-t" id="sc-nt" placeholder="09:00"><input class="sc-add-l" id="sc-nl" placeholder="Название..." onkeydown="if(event.key===\'Enter\')addSC()"><button class="sc-add-btn" onclick="addSC()">+</button></div>';
+  h+='<button class="sc-rst" onclick="resetSchedule()">Восстановить стандартный</button>';
+  document.getElementById('sc-wrap').innerHTML=h;
+}
+
+// ══ GIST SYNC ══
+const GIST_FILENAME='moiden_data.json';
+let gistId=null;
+
+// Token stored SEPARATELY from sync data - never goes to Gist
+function saveToken(val){
+  val=val.trim();
+  if(val) localStorage.setItem('moiden_token', val);
+  showToast('Токен сохранён');
+}
+function getToken(){ return localStorage.getItem('moiden_token')||''; }
+
+function setSyncStatus(state,msg){
+  const dot=document.getElementById('sync-dot');
+  const txt=document.getElementById('sync-status-txt');
+  if(!dot||!txt)return;
+  dot.className='sync-dot'+(state==='ok'?' ok':state==='err'?' err':state==='loading'?' loading':'');
+  txt.textContent=msg;
+}
+
+async function findOrCreateGist(){
+  const token=getToken();if(!token)return null;
+  // search existing gists
+  const res=await fetch('https://api.github.com/gists?per_page=100',{headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}});
+  if(!res.ok)return null;
+  const gists=await res.json();
+  const found=gists.find(g=>g.files&&g.files[GIST_FILENAME]);
+  if(found){gistId=found.id;return found.id;}
+  // create new
+  const cr=await fetch('https://api.github.com/gists',{method:'POST',headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify({description:'Мой день — данные трекера',public:false,files:{[GIST_FILENAME]:{content:JSON.stringify({})}}})});
+  if(!cr.ok)return null;
+  const data=await cr.json();
+  gistId=data.id;return data.id;
+}
+
+async function syncToGist(silent){
+  const token=getToken();
+  if(!token){if(!silent)showToast('Сначала введи токен в настройках');return;}
+  if(!silent)setSyncStatus('loading','Сохраняю в облако...');
+  try{
+    const id=gistId||await findOrCreateGist();if(!id){setSyncStatus('err','Ошибка подключения');return;}
+    const res=await fetch('https://api.github.com/gists/'+id,{method:'PATCH',headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify({files:{[GIST_FILENAME]:{content:(()=>{const d={...ST};delete d['gh_token'];return JSON.stringify(d);})()}}})});
+    if(res.ok){setSyncStatus('ok','Синхронизировано ✓');if(!silent)showToast('Данные сохранены в облако!');}
+    else{setSyncStatus('err','Ошибка сохранения');}
+  }catch(e){setSyncStatus('err','Ошибка сети');}
+}
+
+async function syncFromGist(){
+  const token=getToken();
+  if(!token){showToast('Сначала введи токен в настройках');return;}
+  setSyncStatus('loading','Загружаю из облака...');
+  try{
+    const id=gistId||await findOrCreateGist();if(!id){setSyncStatus('err','Ошибка подключения');return;}
+    const res=await fetch('https://api.github.com/gists/'+id,{headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}});
+    if(!res.ok){setSyncStatus('err','Ошибка загрузки');return;}
+    const data=await res.json();
+    const raw=data.files&&data.files[GIST_FILENAME]&&data.files[GIST_FILENAME].content;
+    if(raw){ST=JSON.parse(raw);persist();renderAll();renderSettings();setSyncStatus('ok','Загружено ✓');showToast('Данные загружены из облака!');}
+    else{setSyncStatus('err','Данных нет');}
+  }catch(e){setSyncStatus('err','Ошибка сети');}
+}
+
+function autoSyncToggle(){
+  const cur=ld('autosync',false);sv('autosync',!cur);
+  const btn=document.getElementById('autosync-btn');
+  if(btn)btn.textContent='⚡ Автосинхронизация: '+((!cur)?'вкл':'выкл');
+  showToast('Автосинхронизация '+((!cur)?'включена':'выключена'));
+}
+
+// ══ SETTINGS RENDER ══
+function renderSettings(){
+  const token=getToken();
+  const btn=document.getElementById('autosync-btn');
+  if(btn)btn.textContent='⚡ Автосинхронизация: '+(ld('autosync',false)?'вкл':'выкл');
+  if(token){setSyncStatus('ok','Токен настроен ✓');}else{setSyncStatus('','Не настроено — введи токен');}
+  renderNotif();
+}
+
+// ══ NOTIFICATIONS ══
+function renderNotif(){
+  const wrap=document.getElementById('notif-wrap');if(!wrap)return;
+  if(!('Notification' in window)){wrap.innerHTML='';return;}
+  if(Notification.permission==='granted'){wrap.innerHTML='<div class="card-lbl grn">🔔 Уведомления включены</div>';return;}
+  wrap.innerHTML='<div class="card-lbl">// напоминания</div><div class="notif-card"><div class="notif-ico">🔔</div><div class="notif-body"><div class="notif-title">Включить напоминания</div><div class="notif-sub">Утром и вечером</div></div><button class="notif-btn" onclick="reqNotif()">Включить</button></div>';
+}
+function reqNotif(){Notification.requestPermission().then(p=>{if(p==='granted'){scheduleNotifs();renderNotif();showToast('Уведомления включены!');}else{showToast('Разрешение отклонено');}});}
+function scheduleNotifs(){const now=new Date();function fireAt(h,m,msg){const t=new Date(now);t.setHours(h,m,0,0);if(t<=now)t.setDate(t.getDate()+1);setTimeout(()=>{if(Notification.permission==='granted')new Notification('Мой день',{body:msg,icon:'./icon.svg'});},t-now);}fireAt(9,0,'☀️ Доброе утро! Открой трекер и начни день с ясностью.');fireAt(21,30,'🌙 Время вечернего дебаггинга. Что сделал сегодня?');}
+
+// ══ RESET ══
+function resetDay(){if(!confirm('Сбросить день? Стрик, смысл и график сохранятся.'))return;const keep={};['streak','last_day','smysl','epoch','sc','cu_morning','cu_day','cu_evening','autosync'].forEach(k=>{if(ST[k]!==undefined)keep[k]=ST[k];});ST=keep;persist();renderAll();}
+
+// ══ TOAST ══
+let toastT;
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),1600);}
+
+// ══ RESIZE ══
+let resizeT;
+let lastW=window.innerWidth;
+window.addEventListener('resize',()=>{
+  clearTimeout(resizeT);
+  resizeT=setTimeout(()=>{
+    const w=window.innerWidth;
+    if(w!==lastW){lastW=w;renderDay();}
+  },200);
+});
+
+// ══ SW ══
+if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+if(Notification.permission==='granted')scheduleNotifs();
+
+// ══ INIT ══
+renderDay();
+
+
+function saveTokenFromInput(){
+  var val=document.getElementById('token-inp').value.trim();
+  if(!val){showToast('Введи токен');return;}
+  saveToken(val);
+  document.getElementById('token-inp').value='';
+  document.getElementById('token-inp').placeholder='Токен сохранён ✓';
+  setTimeout(function(){
+    var inp=document.getElementById('token-inp');
+    if(inp)inp.placeholder='Вставь GitHub Token (ghp_...)';
+  },2000);
+}
+</script>
+</body>
+</html>
