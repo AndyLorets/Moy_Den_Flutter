@@ -9,8 +9,8 @@
 - Focus Session, Completion Screen, FAB «Мне тяжело», Gist синхронизация, уведомления
 
 ### 🔄 Этап 3 — Adaptive Energy (в разработке)
-- [ ] `EnergyService` — расчёт energyCost с мультипликатором
-- [ ] `StateConfig` — активный конфигуратор вместо информационной плашки
+ - [x] `EnergyService` — расчёт energyCost с мультипликатором
+ - [x] `StateConfig` — активный конфигуратор вместо информационной плашки
 - [ ] Energy Bar на Dashboard
 - [ ] Адаптивные кнопки на Completion Screen
 - [x] Расширенная модель `Task` (priority, energyCost, tags)
