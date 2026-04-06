@@ -13,7 +13,7 @@
 - [ ] `StateConfig` — активный конфигуратор вместо информационной плашки
 - [ ] Energy Bar на Dashboard
 - [ ] Адаптивные кнопки на Completion Screen
-- [ ] Расширенная модель `Task` (priority, energyCost, tags)
+- [x] Расширенная модель `Task` (priority, energyCost, tags)
 - [ ] Стрик по P0-условию
 - [ ] Все тексты на русском (удалены системные фразы)
 
