@@ -774,52 +774,74 @@ class _NextStepCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text('СЛЕДУЮЩИЙ ШАГ',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        letterSpacing: 1.5)),
-                const Spacer(),
-                if (task.tipKeys.isNotEmpty)
-                  IconButton(
-                    onPressed: () => onTip(task.tipKeys.first),
-                    icon: const Icon(Icons.help_outline, size: 18),
-                    style: IconButton.styleFrom(
-                        minimumSize: const Size(28, 28),
-                        padding: EdgeInsets.zero),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(task.text,
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w600)),
-            if (task.tag != null) ...[
-              const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(4),
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.colorScheme.primary, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.primary.withOpacity(0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('СЛЕДУЮЩИЙ ШАГ',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onPrimaryContainer,
+                      letterSpacing: 1.5)),
+              const Spacer(),
+              if (task.tipKeys.isNotEmpty)
+                IconButton(
+                  onPressed: () => onTip(task.tipKeys.first),
+                  icon: const Icon(Icons.help_outline, size: 18),
+                  style: IconButton.styleFrom(
+                      minimumSize: const Size(28, 28),
+                      padding: EdgeInsets.zero),
                 ),
-                child: Text(task.tag!, style: theme.textTheme.labelSmall),
-              ),
             ],
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child:
-                  FilledButton(onPressed: onStart, child: const Text('Начать')),
+          ),
+          const SizedBox(height: 12),
+          Text(task.text,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onPrimaryContainer)),
+          if (task.tag != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.secondaryContainer,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(task.tag!,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.onSecondaryContainer)),
             ),
           ],
-        ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: onStart,
+              icon: const Icon(Icons.play_arrow),
+              label: const Text('Начать'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: theme.colorScheme.onPrimary,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
