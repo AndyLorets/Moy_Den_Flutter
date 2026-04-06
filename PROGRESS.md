@@ -1,5 +1,28 @@
 # Прогресс разработки — Мой день
 
+## Roadmap
+
+### ✅ Этап 1 — MVP (выполнено)
+- Smart Entry, Dashboard, Focus Mode, Overview, локальное хранение
+
+### ✅ Этап 2 — Core (выполнено)
+- Focus Session, Completion Screen, FAB «Мне тяжело», Gist синхронизация, уведомления
+
+### 🔄 Этап 3 — Adaptive Energy (в разработке)
+- [ ] `EnergyService` — расчёт energyCost с мультипликатором
+- [ ] `StateConfig` — активный конфигуратор вместо информационной плашки
+- [ ] Energy Bar на Dashboard
+- [ ] Адаптивные кнопки на Completion Screen
+- [ ] Расширенная модель `Task` (priority, energyCost, tags)
+- [ ] Стрик по P0-условию
+- [ ] Все тексты на русском (удалены системные фразы)
+
+### 📋 Этап 4 — Platform
+- Система профилей, конструктор задач с ветками, все шаблоны, экспорт/импорт, Web деплой
+
+### ✨ Этап 5 — Polish
+- Анимации, haptic feedback, онбординг, статистика
+
 ## Сделано
 
 ### Инфраструктура
@@ -17,7 +40,7 @@
   - [x] Утренние блоки: конфликт бессознательного, состояние утра
   - [x] Дневной блок: мотивация (из страха / из свободы)
   - [x] Вечерние блоки: аффирмация, страх, инсайт
-- [x] `FocusModeScreen` — одна задача на весь экран
+- [x] `FocusModeScreen` — одна задача на весь экранC:\Users\Andrew\AppData\Local\Android\Sdk\platform-tools\adb.exe install -r build\app\outputs\flutter-apk\app-debug.apk
 - [x] `FocusSessionScreen` — таймер 5–25 мин с анимацией
 - [x] `CompletionScreen` — "Ты сделал шаг." + кнопки
 - [x] `OverviewScreen` — все задачи по вкладкам Утро/День/Вечер с добавлением своих
