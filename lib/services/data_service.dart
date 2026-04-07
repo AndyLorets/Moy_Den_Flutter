@@ -321,6 +321,16 @@ class DataService {
     return '${d.year}-${d.month}-${d.day}';
   }
 
+  // Вернёт true если вчера стрик был сломан (lastDay не вчера и стрик был > 0)
+  bool get wasStreakBrokenToday {
+    final yesterday = DateTime.now().subtract(const Duration(days: 1));
+    final yesterdayKey =
+        '${yesterday.year}-${yesterday.month}-${yesterday.day}';
+    final lastDay = _p.getString(PrefKeys.lastDay) ?? '';
+    // Если последний зачёт был позавчера или раньше — стрик сброшен
+    return streak == 0 && lastDay.isNotEmpty && lastDay != yesterdayKey && lastDay != _todayKey();
+  }
+
   // ── Поля состояния ──────────────────────────────────────
   String get morningState => _p.getString(PrefKeys.state) ?? '';
   set morningState(String v) => _p.setString(PrefKeys.state, v);

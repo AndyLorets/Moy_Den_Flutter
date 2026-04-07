@@ -210,6 +210,15 @@ const String smyslPlaceholder =
 const String conflictQuestion =
     'Прямо сейчас, когда думаю о своей цели — что я чувствую глубоко внутри?';
 
+// Поддерживающие сообщения (раздел 6.3 PDD)
+class SupportMessages {
+  static const String p0InFatigue = 'Ты сделал главное. Этого достаточно на сегодня.';
+  static const String streakReset = 'Каждый день — новое начало. Завтра снова.';
+  static const String firstTaskDone = 'Шаг сделан. Остальное — бонус.';
+  static const String excitedBonusDone = 'Ты в потоке. Хорошо использовал этот момент.';
+  static const String anxietyAfterTask = 'Немного лучше? Это нормально — так и работает.';
+}
+
 // Уведомления
 class NotifTexts {
   static const String morning = '☀️ Доброе утро! Открой трекер и начни день с ясностью.';

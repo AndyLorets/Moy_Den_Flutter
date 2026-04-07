@@ -4,6 +4,7 @@ import '../services/data_service.dart';
 import '../services/energy_service.dart';
 import '../models/task.dart';
 import '../models/state_config.dart';
+import '../constants/strings.dart';
 
 // Экран Focus Mode — одна задача на весь экран
 class FocusModeScreen extends StatelessWidget {
@@ -80,20 +81,21 @@ class FocusModeScreen extends StatelessWidget {
                 ),
               ],
               const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () => Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          FocusSessionScreen(task: task, onDone: onDone),
+              if (EnergyService.instance.currentConfig.state != EnergyState.anxiety)
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () => Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            FocusSessionScreen(task: task, onDone: onDone),
+                      ),
                     ),
+                    icon: const Icon(Icons.timer_outlined),
+                    label: const Text('Запустить таймер'),
                   ),
-                  icon: const Icon(Icons.timer_outlined),
-                  label: const Text('Запустить таймер'),
                 ),
-              ),
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
@@ -203,7 +205,7 @@ class _FocusSessionScreenState extends State<FocusSessionScreen>
       context,
       MaterialPageRoute(
         builder: (ctx) => CompletionScreen(
-          taskTitle: widget.task.title,
+          task: widget.task,
           onAnother: () => Navigator.popUntil(ctx, (r) => r.isFirst),
           onEnough: () => Navigator.popUntil(ctx, (r) => r.isFirst),
         ),
@@ -223,6 +225,8 @@ class _FocusSessionScreenState extends State<FocusSessionScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isAnxiety = EnergyService.instance.currentConfig.state == EnergyState.anxiety;
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -237,7 +241,7 @@ class _FocusSessionScreenState extends State<FocusSessionScreen>
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
-              if (!_running) ...[
+              if (!isAnxiety && !_running) ...[
                 Text(
                   'Выбери длительность',
                   style: theme.textTheme.labelMedium?.copyWith(
@@ -262,48 +266,50 @@ class _FocusSessionScreenState extends State<FocusSessionScreen>
                 const SizedBox(height: 24),
               ],
               const Spacer(),
-              AnimatedBuilder(
-                animation: _pulseController,
-                builder: (_, __) {
-                  final scale =
-                      _running ? 1.0 + _pulseController.value * 0.02 : 1.0;
-                  return Transform.scale(
-                    scale: scale,
-                    child: SizedBox(
-                      width: 200,
-                      height: 200,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          SizedBox(
-                            width: 200,
-                            height: 200,
-                            child: CircularProgressIndicator(
-                              value: _progress,
-                              strokeWidth: 6,
-                              backgroundColor:
-                                  theme.colorScheme.surfaceContainerHighest,
-                              valueColor: AlwaysStoppedAnimation(
-                                theme.colorScheme.primary,
+              if (!isAnxiety) ...[
+                AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (_, __) {
+                    final scale =
+                        _running ? 1.0 + _pulseController.value * 0.02 : 1.0;
+                    return Transform.scale(
+                      scale: scale,
+                      child: SizedBox(
+                        width: 200,
+                        height: 200,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            SizedBox(
+                              width: 200,
+                              height: 200,
+                              child: CircularProgressIndicator(
+                                value: _progress,
+                                strokeWidth: 6,
+                                backgroundColor:
+                                    theme.colorScheme.surfaceContainerHighest,
+                                valueColor: AlwaysStoppedAnimation(
+                                  theme.colorScheme.primary,
+                                ),
                               ),
                             ),
-                          ),
-                          Text(
-                            _timeString,
-                            style: theme.textTheme.displayMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              fontFeatures: const [
-                                FontFeature.tabularFigures()
-                              ],
+                            Text(
+                              _timeString,
+                              style: theme.textTheme.displayMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                fontFeatures: const [
+                                  FontFeature.tabularFigures()
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 24),
+                    );
+                  },
+                ),
+                const SizedBox(height: 24),
+              ],
               Text(
                 widget.task.title,
                 textAlign: TextAlign.center,
@@ -311,28 +317,39 @@ class _FocusSessionScreenState extends State<FocusSessionScreen>
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
+              if (isAnxiety) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'Начни с малого. Ты уже здесь — это достаточно.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
               const Spacer(),
-              Row(
-                children: [
-                  if (_running || _secondsLeft < _selectedMinutes * 60)
+              if (!isAnxiety)
+                Row(
+                  children: [
+                    if (_running || _secondsLeft < _selectedMinutes * 60)
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _resetTimer,
+                          child: const Text('Сбросить'),
+                        ),
+                      ),
+                    if (_running || _secondsLeft < _selectedMinutes * 60)
+                      const SizedBox(width: 12),
                     Expanded(
-                      child: OutlinedButton(
-                        onPressed: _resetTimer,
-                        child: const Text('Сбросить'),
+                      flex: 2,
+                      child: FilledButton.icon(
+                        onPressed: _running ? _pauseTimer : _startTimer,
+                        icon: Icon(_running ? Icons.pause : Icons.play_arrow),
+                        label: Text(_running ? 'Пауза' : 'Старт'),
                       ),
                     ),
-                  if (_running || _secondsLeft < _selectedMinutes * 60)
-                    const SizedBox(width: 12),
-                  Expanded(
-                    flex: 2,
-                    child: FilledButton.icon(
-                      onPressed: _running ? _pauseTimer : _startTimer,
-                      icon: Icon(_running ? Icons.pause : Icons.play_arrow),
-                      label: Text(_running ? 'Пауза' : 'Старт'),
-                    ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
               const SizedBox(height: 12),
               TextButton(
                 onPressed: _onComplete,
@@ -349,13 +366,13 @@ class _FocusSessionScreenState extends State<FocusSessionScreen>
 
 // Экран Completion — после выполнения задачи
 class CompletionScreen extends StatelessWidget {
-  final String taskTitle;
+  final Task task;
   final VoidCallback onAnother;
   final VoidCallback onEnough;
 
   const CompletionScreen({
     super.key,
-    required this.taskTitle,
+    required this.task,
     required this.onAnother,
     required this.onEnough,
   });
@@ -370,6 +387,38 @@ class CompletionScreen extends StatelessWidget {
     return EnergyService.instance.getEnergyPercent(tasks);
   }
 
+  String _buildMessage(double energy, StateConfig config) {
+    final ds = DataService.instance;
+
+    // Тревога — после любой задачи
+    if (config.state == EnergyState.anxiety) {
+      return SupportMessages.anxietyAfterTask;
+    }
+
+    // Усталость + задача P0
+    if (config.state == EnergyState.fatigue && task.priority == Priority.P0) {
+      return SupportMessages.p0InFatigue;
+    }
+
+    // Воодушевление + задача isGrowth (включая бонусную)
+    if (config.state == EnergyState.excited &&
+        task.tags.contains(Tag.isGrowth)) {
+      return SupportMessages.excitedBonusDone;
+    }
+
+    // Первая задача дня — только одна выполнена
+    final allTasks = [...ds.morningTasks, ...ds.dayTasks, ...ds.eveningTasks];
+    final doneCount = allTasks.where((t) => ds.isTaskDone(t.id)).length;
+    if (doneCount == 1) {
+      return SupportMessages.firstTaskDone;
+    }
+
+    // Дефолт по энергии
+    if (energy < 0.1) return 'Лимит исчерпан. Пора восстановиться.';
+    if (energy < 0.3) return 'Хорошая работа. Можно остановиться.';
+    return 'Ты сделал шаг.';
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -377,15 +426,7 @@ class CompletionScreen extends StatelessWidget {
     final config = EnergyService.instance.currentConfig;
 
     final lowEnergy = energy < 0.3 || config.state == EnergyState.fatigue;
-
-    String message = 'Ты сделал шаг.';
-    if (energy < 0.1) {
-      message = 'Лимит исчерпан. Пора восстановиться.';
-    } else if (lowEnergy) {
-      message = 'Хорошая работа. Можно остановиться.';
-    } else if (config.state == EnergyState.excited) {
-      message = 'Отличный темп! Идем на разгон?';
-    }
+    final message = _buildMessage(energy, config);
 
     return Scaffold(
       body: SafeArea(
@@ -406,7 +447,7 @@ class CompletionScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                taskTitle,
+                task.title,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),

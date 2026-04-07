@@ -386,6 +386,16 @@ class _EveningEntry extends StatelessWidget {
                       style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant)),
                 ],
+                if (ds.wasStreakBrokenToday) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    SupportMessages.streakReset,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
