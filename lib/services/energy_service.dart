@@ -53,8 +53,37 @@ class EnergyService {
       return [...p0Tasks, if (others.isNotEmpty) others.first];
     }
 
-    // 3. Воодушевление: добавляем бонусную isGrowth-задачу
-    final result = filtered.toList();
+    // 3. Бюджетная фильтрация: P0 → P1 → P2, пока лимит не исчерпан
+    final sorted = filtered.toList()
+      ..sort((a, b) => a.priority.index.compareTo(b.priority.index));
+
+    final result = <Task>[];
+    int budget = config.energyLimit;
+
+    // Списываем уже потраченную энергию (выполненные задачи)
+    for (final t in sorted) {
+      if (t.isCompleted) {
+        budget -= (t.energyCost * config.costMultiplier).round();
+      }
+    }
+    budget = budget.clamp(0, config.energyLimit);
+
+    for (final t in sorted) {
+      final cost = (t.energyCost * config.costMultiplier).round();
+      if (t.priority == Priority.P0) {
+        // P0 всегда показываем
+        result.add(t);
+      } else if (t.isCompleted) {
+        // Выполненные всегда показываем (чтобы пользователь видел прогресс)
+        result.add(t);
+      } else if (cost <= budget) {
+        result.add(t);
+        budget -= cost;
+      }
+      // Иначе задача не влезает в бюджет — скрываем
+    }
+
+    // 4. Воодушевление: добавляем бонусную isGrowth-задачу
     if (config.state == EnergyState.excited) {
       final bonus = _ds.bonusTask.copyWith(
         isCompleted: _ds.isTaskDone(_ds.bonusTask.id),
