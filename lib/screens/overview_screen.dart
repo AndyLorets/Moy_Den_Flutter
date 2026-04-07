@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/data_service.dart';
-import '../constants/strings.dart';
+import '../models/task.dart';
 import '../widgets/tip_sheet.dart';
 import 'focus_mode_screen.dart';
 
@@ -24,7 +24,6 @@ class _OverviewScreenState extends State<OverviewScreen>
   @override
   void initState() {
     super.initState();
-    // Открываем вкладку актуальной фазы
     final h = DateTime.now().hour;
     final initial = h < 11 ? 0 : h < 18 ? 1 : 2;
     _tabs = TabController(length: 3, vsync: this, initialIndex: initial);
@@ -60,10 +59,21 @@ class _OverviewScreenState extends State<OverviewScreen>
     setState(() {});
   }
 
-  void _showTip(String key) {
-    final tip = Tips.all[key];
-    if (tip == null) return;
-    showTipSheet(context, title: tip['title']!, body: tip['body']!);
+  void _openFocus(Task task) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FocusModeScreen(
+          task: task,
+          onDone: () {
+            widget.onChanged();
+            setState(() {});
+          },
+        ),
+      ),
+    );
+    widget.onChanged();
+    setState(() {});
   }
 
   @override
@@ -85,24 +95,22 @@ class _OverviewScreenState extends State<OverviewScreen>
         children: [
           _PhaseTab(
             phase: 'morning',
-            fixedTasks: _ds.adaptedMorningTasks,
+            fixedTasks: _ds.morningTasks,
             customTasks: _ds.getCustomTasks('morning'),
             addCtrl: _addMorningCtrl,
             onToggle: _toggle,
             onAddCustom: () => _addCustom('morning', _addMorningCtrl),
             onRemoveCustom: (id) => _removeCustom('morning', id),
-            onTip: _showTip,
             onStartFocus: _openFocus,
           ),
           _PhaseTab(
             phase: 'day',
-            fixedTasks: _ds.adaptedDayTasks,
+            fixedTasks: _ds.dayTasks,
             customTasks: _ds.getCustomTasks('day'),
             addCtrl: _addDayCtrl,
             onToggle: _toggle,
             onAddCustom: () => _addCustom('day', _addDayCtrl),
             onRemoveCustom: (id) => _removeCustom('day', id),
-            onTip: _showTip,
             onStartFocus: _openFocus,
           ),
           _PhaseTab(
@@ -113,43 +121,24 @@ class _OverviewScreenState extends State<OverviewScreen>
             onToggle: _toggle,
             onAddCustom: () => _addCustom('evening', _addEveningCtrl),
             onRemoveCustom: (id) => _removeCustom('evening', id),
-            onTip: _showTip,
             onStartFocus: _openFocus,
           ),
         ],
       ),
     );
   }
-
-  void _openFocus(TaskItem task) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => FocusModeScreen(
-          task: task,
-          onDone: () {
-            widget.onChanged();
-            setState(() {});
-          },
-        ),
-      ),
-    );
-    widget.onChanged();
-    setState(() {});
-  }
 }
 
 // ── Вкладка одной фазы ───────────────────────────────────────
 class _PhaseTab extends StatelessWidget {
   final String phase;
-  final List<TaskItem> fixedTasks;
-  final List<TaskItem> customTasks;
+  final List<Task> fixedTasks;
+  final List<Task> customTasks;
   final TextEditingController addCtrl;
   final ValueChanged<String> onToggle;
   final VoidCallback onAddCustom;
   final ValueChanged<String> onRemoveCustom;
-  final ValueChanged<String> onTip;
-  final ValueChanged<TaskItem> onStartFocus;
+  final ValueChanged<Task> onStartFocus;
 
   const _PhaseTab({
     required this.phase,
@@ -159,7 +148,6 @@ class _PhaseTab extends StatelessWidget {
     required this.onToggle,
     required this.onAddCustom,
     required this.onRemoveCustom,
-    required this.onTip,
     required this.onStartFocus,
   });
 
@@ -169,22 +157,21 @@ class _PhaseTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.only(bottom: 32),
       children: [
-        // Фиксированные задачи
         ...fixedTasks.map((t) => _TaskTile(
               task: t,
               done: ds.isTaskDone(t.id),
               onTap: () => onToggle(t.id),
-              onTip: t.tipKeys.isNotEmpty ? () => onTip(t.tipKeys.first) : null,
               onFocus: () => onStartFocus(t),
+              onTip: t.hint != null
+                  ? () => showTipSheet(context, title: t.title, body: t.hint!)
+                  : null,
             )),
-        // Кастомные задачи
         ...customTasks.map((t) => _CustomTaskTile(
               task: t,
               done: ds.isTaskDone(t.id),
               onTap: () => onToggle(t.id),
               onDelete: () => onRemoveCustom(t.id),
             )),
-        // Строка добавления
         _AddTaskRow(ctrl: addCtrl, onAdd: onAddCustom),
       ],
     );
@@ -193,19 +180,42 @@ class _PhaseTab extends StatelessWidget {
 
 // ── Тайл фиксированной задачи ─────────────────────────────────
 class _TaskTile extends StatelessWidget {
-  final TaskItem task;
+  final Task task;
   final bool done;
   final VoidCallback onTap;
-  final VoidCallback? onTip;
   final VoidCallback onFocus;
+  final VoidCallback? onTip;
 
   const _TaskTile({
     required this.task,
     required this.done,
     required this.onTap,
-    required this.onTip,
     required this.onFocus,
+    this.onTip,
   });
+
+  String _priorityLabel(Priority p) {
+    switch (p) {
+      case Priority.P0:
+        return 'P0';
+      case Priority.P1:
+        return 'P1';
+      case Priority.P2:
+        return 'P2';
+    }
+  }
+
+  Color _priorityColor(Priority p, BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    switch (p) {
+      case Priority.P0:
+        return scheme.error;
+      case Priority.P1:
+        return scheme.primary;
+      case Priority.P2:
+        return scheme.outline;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -217,7 +227,6 @@ class _TaskTile extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Чекбокс
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               width: 22,
@@ -238,34 +247,50 @@ class _TaskTile extends StatelessWidget {
                   : null,
             ),
             const SizedBox(width: 12),
-            // Текст
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    task.text,
+                    task.title,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       decoration: done ? TextDecoration.lineThrough : null,
                       color: done ? theme.colorScheme.onSurfaceVariant : null,
                     ),
                   ),
-                  if (task.tag != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 5, vertical: 1),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(4),
+                          color: _priorityColor(task.priority, context)
+                              .withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(3),
                         ),
-                        child: Text(task.tag!, style: theme.textTheme.labelSmall),
+                        child: Text(
+                          _priorityLabel(task.priority),
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: _priorityColor(task.priority, context),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                    ),
+                      if (task.energyCost > 0) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          '${task.energyCost}%',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ],
               ),
             ),
-            // Кнопки
             if (onTip != null)
               _SmallButton(
                 icon: Icons.help_outline,
@@ -284,7 +309,7 @@ class _TaskTile extends StatelessWidget {
 
 // ── Тайл кастомной задачи ─────────────────────────────────────
 class _CustomTaskTile extends StatelessWidget {
-  final TaskItem task;
+  final Task task;
   final bool done;
   final VoidCallback onTap;
   final VoidCallback onDelete;
@@ -328,7 +353,7 @@ class _CustomTaskTile extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                task.text,
+                task.title,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   decoration: done ? TextDecoration.lineThrough : null,
                   color: done ? theme.colorScheme.onSurfaceVariant : null,
@@ -363,7 +388,8 @@ class _AddTaskRow extends StatelessWidget {
               decoration: InputDecoration(
                 hintText: 'Добавить задачу...',
                 isDense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),

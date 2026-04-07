@@ -209,20 +209,18 @@ class _MorningEntryState extends State<_MorningEntry> {
                           style: theme.textTheme.labelSmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant)),
                       const SizedBox(height: 2),
-                      Text(firstTask.text,
+                      Text(firstTask.title,
                           style: theme.textTheme.bodyMedium
                               ?.copyWith(fontWeight: FontWeight.w500)),
                     ],
                   ),
                 ),
-                if (firstTask.tipKeys.isNotEmpty)
+                if (firstTask.hint != null)
                   IconButton(
                     icon: const Icon(Icons.help_outline, size: 18),
                     onPressed: () {
-                      final tip = Tips.all[firstTask.tipKeys.first];
-                      if (tip != null)
-                        showTipSheet(context,
-                            title: tip['title']!, body: tip['body']!);
+                      showTipSheet(context,
+                          title: firstTask.title, body: firstTask.hint!);
                     },
                     style: IconButton.styleFrom(
                         padding: EdgeInsets.zero,
@@ -271,11 +269,11 @@ class _DayEntry extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final task = ds.adaptedDayTasks.firstWhere(
+    final task = ds.dayTasks.firstWhere(
       (t) => !ds.isTaskDone(t.id),
       orElse: () => ds.dayTasks.first,
     );
-    final allDone = ds.adaptedDayTasks.every((t) => ds.isTaskDone(t.id));
+    final allDone = ds.dayTasks.every((t) => ds.isTaskDone(t.id));
 
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -303,26 +301,11 @@ class _DayEntry extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(task.text,
+                  Text(task.title,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: theme.colorScheme.onPrimaryContainer,
                       )),
-                  if (task.tag != null) ...[
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.onPrimaryContainer
-                            .withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(task.tag!,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.onPrimaryContainer)),
-                    ),
-                  ],
                 ],
               ),
             ),

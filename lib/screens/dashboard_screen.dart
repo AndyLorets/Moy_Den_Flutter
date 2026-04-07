@@ -61,46 +61,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  // Следующая невыполненная задача актуальной фазы (адаптированная по состоянию)
-  TaskItem? get _nextTask {
-    final phaseTasks = switch (_phase) {
-      DayPhase.morning => _ds.adaptedMorningTasks,
-      DayPhase.day => _ds.adaptedDayTasks,
-      DayPhase.evening => _ds.eveningTasks,
-    };
-    for (final t in phaseTasks) {
-      if (!_ds.isTaskDone(t.id)) return t;
-    }
-    // Если в текущей фазе всё сделано — ищем в других
-    for (final t in [
-      ..._ds.adaptedMorningTasks,
-      ..._ds.adaptedDayTasks,
-      ..._ds.eveningTasks
-    ]) {
-      if (!_ds.isTaskDone(t.id)) return t;
-    }
-    return null;
+  // Все задачи с актуальным состоянием выполнения
+  List<Task> get _allTasks {
+    return _ds.allFixedTasks
+        .map((t) => t.copyWith(isCompleted: _ds.isTaskDone(t.id)))
+        .toList();
   }
 
-  // Собираем все задачи для расчета энергии
-  List<Task> get _allTasksForEnergy {
-    final items = [
-      ..._ds.adaptedMorningTasks,
-      ..._ds.adaptedDayTasks,
-      ..._ds.eveningTasks
-    ];
-    return items
-        .map((t) => Task(
-              id: t.id,
-              title: t.text,
-              phase: Phase.day, // Заглушка, так как TaskItem не хранит фазу
-              priority: Priority.P1,
-              energyCost:
-                  15, // Базовая стоимость (пока не мигрировали DataService)
-              tags: [],
-              isCompleted: _ds.isTaskDone(t.id),
-            ))
-        .toList();
+  // Задачи текущей фазы, отфильтрованные EnergyService
+  List<Task> get _visibleTasksForPhase {
+    final phaseEnum = switch (_phase) {
+      DayPhase.morning => Phase.morning,
+      DayPhase.day => Phase.day,
+      DayPhase.evening => Phase.evening,
+    };
+    final phaseTasks = _allTasks.where((t) => t.phase == phaseEnum).toList();
+    return EnergyService.instance.getVisibleTasks(phaseTasks);
+  }
+
+  // Следующая невыполненная задача текущей фазы (адаптированная по состоянию)
+  Task? get _nextTask {
+    for (final t in _visibleTasksForPhase) {
+      if (!t.isCompleted) return t;
+    }
+    // Если в текущей фазе всё сделано — ищем во всех видимых задачах
+    final allVisible = EnergyService.instance.getVisibleTasks(_allTasks);
+    for (final t in allVisible) {
+      if (!t.isCompleted) return t;
+    }
+    return null;
   }
 
   void _refresh() => setState(() {});
@@ -120,7 +109,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final phase = _phase;
     final state = _ds.morningState;
 
-    final energyPercent = energyService.getEnergyPercent(_allTasksForEnergy);
+    final energyPercent = energyService.getEnergyPercent(_allTasks);
 
     return Scaffold(
       body: SafeArea(
@@ -233,7 +222,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   );
                   _refresh();
                 },
-                onTip: _showTip,
+                onTip: next.hint != null
+                    ? () => showTipSheet(context,
+                        title: next.title, body: next.hint!)
+                    : null,
               )
             else
               _AllDoneCard(streak: streak),
@@ -792,11 +784,11 @@ class _InsightCard extends StatelessWidget {
 
 // ── Следующий шаг ────────────────────────────────────────────
 class _NextStepCard extends StatelessWidget {
-  final TaskItem task;
+  final Task task;
   final VoidCallback onStart;
-  final ValueChanged<String> onTip;
+  final VoidCallback? onTip;
   const _NextStepCard(
-      {required this.task, required this.onStart, required this.onTip});
+      {required this.task, required this.onStart, this.onTip});
 
   @override
   Widget build(BuildContext context) {
@@ -810,7 +802,7 @@ class _NextStepCard extends StatelessWidget {
         border: Border.all(color: theme.colorScheme.primary, width: 2),
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.primary.withOpacity(0.2),
+            color: theme.colorScheme.primary.withValues(alpha: 0.2),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -826,9 +818,9 @@ class _NextStepCard extends StatelessWidget {
                       color: theme.colorScheme.onPrimaryContainer,
                       letterSpacing: 1.5)),
               const Spacer(),
-              if (task.tipKeys.isNotEmpty)
+              if (onTip != null)
                 IconButton(
-                  onPressed: () => onTip(task.tipKeys.first),
+                  onPressed: onTip,
                   icon: const Icon(Icons.help_outline, size: 18),
                   style: IconButton.styleFrom(
                       minimumSize: const Size(28, 28),
@@ -837,11 +829,11 @@ class _NextStepCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Text(task.text,
+          Text(task.title,
               style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: theme.colorScheme.onPrimaryContainer)),
-          if (task.tag != null) ...[
+          if (task.tags.isNotEmpty) ...[
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -849,7 +841,7 @@ class _NextStepCard extends StatelessWidget {
                 color: theme.colorScheme.secondaryContainer,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(task.tag!,
+              child: Text(task.tags.first.name,
                   style: theme.textTheme.labelMedium?.copyWith(
                       color: theme.colorScheme.onSecondaryContainer)),
             ),

@@ -1,15 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/data_service.dart';
-import '../widgets/tip_sheet.dart';
-import '../constants/strings.dart';
 import '../services/energy_service.dart';
 import '../models/task.dart';
 import '../models/state_config.dart';
 
 // Экран Focus Mode — одна задача на весь экран
 class FocusModeScreen extends StatelessWidget {
-  final TaskItem task;
+  final Task task;
   final VoidCallback onDone;
 
   const FocusModeScreen({super.key, required this.task, required this.onDone});
@@ -42,47 +40,46 @@ class FocusModeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                task.text,
+                task.title,
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                   height: 1.4,
                 ),
               ),
-              if (task.tag != null) ...[
+              if (task.tags.isNotEmpty) ...[
                 const SizedBox(height: 12),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    task.tag!,
-                    style: theme.textTheme.labelSmall,
-                  ),
+                Wrap(
+                  spacing: 6,
+                  children: task.tags.map((tag) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      _tagLabel(tag),
+                      style: theme.textTheme.labelSmall,
+                    ),
+                  )).toList(),
                 ),
               ],
-              if (task.tipKeys.isNotEmpty) ...[
+              if (task.hint != null) ...[
                 const SizedBox(height: 16),
-                TextButton.icon(
-                  onPressed: () {
-                    final tip = Tips.all[task.tipKeys.first];
-                    if (tip != null) {
-                      showTipSheet(context,
-                          title: tip['title']!, body: tip['body']!);
-                    }
-                  },
-                  icon: const Icon(Icons.help_outline, size: 16),
-                  label: const Text('Зачем это?'),
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    foregroundColor: theme.colorScheme.onSurfaceVariant,
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    task.hint!,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ],
               const Spacer(),
-              // Кнопка запуска таймера
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
@@ -116,11 +113,24 @@ class FocusModeScreen extends StatelessWidget {
       ),
     );
   }
+
+  String _tagLabel(Tag tag) {
+    switch (tag) {
+      case Tag.isMechanical:
+        return 'механическое';
+      case Tag.isEssential:
+        return 'важное';
+      case Tag.isDeepWork:
+        return 'глубокая работа';
+      case Tag.isGrowth:
+        return 'рост';
+    }
+  }
 }
 
 // Экран Focus Session — таймер обратного отсчёта
 class FocusSessionScreen extends StatefulWidget {
-  final TaskItem task;
+  final Task task;
   final VoidCallback onDone;
 
   const FocusSessionScreen(
@@ -142,6 +152,7 @@ class _FocusSessionScreenState extends State<FocusSessionScreen>
   @override
   void initState() {
     super.initState();
+    _selectedMinutes = widget.task.timerMinutes ?? 10;
     _secondsLeft = _selectedMinutes * 60;
     _pulseController = AnimationController(
       vsync: this,
@@ -192,10 +203,8 @@ class _FocusSessionScreenState extends State<FocusSessionScreen>
       context,
       MaterialPageRoute(
         builder: (ctx) => CompletionScreen(
-          taskText: widget.task.text,
-          // "Ещё одно" — возвращаемся на дашборд (закрываем весь стек фокуса)
+          taskTitle: widget.task.title,
           onAnother: () => Navigator.popUntil(ctx, (r) => r.isFirst),
-          // "Достаточно" — тоже на дашборд
           onEnough: () => Navigator.popUntil(ctx, (r) => r.isFirst),
         ),
       ),
@@ -228,7 +237,6 @@ class _FocusSessionScreenState extends State<FocusSessionScreen>
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
-              // Выбор длительности (только пока не запущен)
               if (!_running) ...[
                 Text(
                   'Выбери длительность',
@@ -254,7 +262,6 @@ class _FocusSessionScreenState extends State<FocusSessionScreen>
                 const SizedBox(height: 24),
               ],
               const Spacer(),
-              // Анимированный таймер
               AnimatedBuilder(
                 animation: _pulseController,
                 builder: (_, __) {
@@ -298,14 +305,13 @@ class _FocusSessionScreenState extends State<FocusSessionScreen>
               ),
               const SizedBox(height: 24),
               Text(
-                widget.task.text,
+                widget.task.title,
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
               const Spacer(),
-              // Кнопки управления
               Row(
                 children: [
                   if (_running || _secondsLeft < _selectedMinutes * 60)
@@ -343,36 +349,24 @@ class _FocusSessionScreenState extends State<FocusSessionScreen>
 
 // Экран Completion — после выполнения задачи
 class CompletionScreen extends StatelessWidget {
-  final String taskText;
+  final String taskTitle;
   final VoidCallback onAnother;
   final VoidCallback onEnough;
 
   const CompletionScreen({
     super.key,
-    required this.taskText,
+    required this.taskTitle,
     required this.onAnother,
     required this.onEnough,
   });
 
-  // Расчет текущего уровня энергии для адаптации кнопок
   double _getCurrentEnergy() {
     final ds = DataService.instance;
-    final items = [
-      ...ds.adaptedMorningTasks,
-      ...ds.adaptedDayTasks,
-      ...ds.eveningTasks
-    ];
-    final tasks = items
-        .map((t) => Task(
-              id: t.id,
-              title: t.text,
-              phase: Phase.day,
-              priority: Priority.P1,
-              energyCost: 15,
-              tags: [],
-              isCompleted: ds.isTaskDone(t.id),
-            ))
-        .toList();
+    final tasks = [
+      ...ds.morningTasks,
+      ...ds.dayTasks,
+      ...ds.eveningTasks,
+    ].map((t) => t.copyWith(isCompleted: ds.isTaskDone(t.id))).toList();
     return EnergyService.instance.getEnergyPercent(tasks);
   }
 
@@ -382,8 +376,6 @@ class CompletionScreen extends StatelessWidget {
     final energy = _getCurrentEnergy();
     final config = EnergyService.instance.currentConfig;
 
-    // Логика: если энергии мало (<30%) или режим Усталости,
-    // предлагаем закончить как основное действие.
     final lowEnergy = energy < 0.3 || config.state == EnergyState.fatigue;
 
     String message = 'Ты сделал шаг.';
@@ -414,7 +406,7 @@ class CompletionScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                taskText,
+                taskTitle,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),

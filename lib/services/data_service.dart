@@ -2,23 +2,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/keys.dart';
 import '../constants/strings.dart';
-
-// Модель задачи
-class TaskItem {
-  final String id;
-  final String text;
-  final List<String> tipKeys; // ключи подсказок
-  final String? tag;
-  final bool isCustom;
-
-  const TaskItem({
-    required this.id,
-    required this.text,
-    this.tipKeys = const [],
-    this.tag,
-    this.isCustom = false,
-  });
-}
+import '../models/task.dart';
 
 // Модель блока расписания
 class ScheduleItem {
@@ -73,17 +57,6 @@ extension StudyTypeExt on StudyType {
         return 'ai';
     }
   }
-
-  String get tag {
-    switch (this) {
-      case StudyType.english:
-        return 'язык';
-      case StudyType.unity:
-        return 'unity';
-      case StudyType.ai:
-        return 'ai';
-    }
-  }
 }
 
 // Центральный сервис данных
@@ -119,92 +92,160 @@ class DataService {
   }
 
   // ── Задачи (фиксированные) ───────────────────────────────
-  List<TaskItem> get morningTasks {
+  List<Task> get morningTasks {
     final study = todayStudy;
     return [
-      const TaskItem(id: 'm_pose', text: TaskTexts.pose, tipKeys: ['pose']),
-      const TaskItem(
-          id: 'm_breath', text: TaskTexts.breath, tipKeys: ['breath']),
-      const TaskItem(
-          id: 'm_vis', text: TaskTexts.visualization, tipKeys: ['m1']),
-      const TaskItem(
-          id: 'm_affirm', text: TaskTexts.affirmation, tipKeys: ['m2']),
-      TaskItem(
+      Task(
+        id: 'm_pose',
+        title: TaskTexts.pose,
+        phase: Phase.morning,
+        priority: Priority.P0,
+        energyCost: 5,
+        tags: [Tag.isMechanical, Tag.isEssential],
+        hint: Tips.all['pose']?['body'],
+      ),
+      Task(
+        id: 'm_breath',
+        title: TaskTexts.breath,
+        phase: Phase.morning,
+        priority: Priority.P0,
+        energyCost: 5,
+        tags: [Tag.isMechanical, Tag.isEssential],
+        hint: Tips.all['breath']?['body'],
+      ),
+      Task(
+        id: 'm_vis',
+        title: TaskTexts.visualization,
+        phase: Phase.morning,
+        priority: Priority.P1,
+        energyCost: 10,
+        tags: [Tag.isMechanical],
+        hint: Tips.all['m1']?['body'],
+      ),
+      Task(
+        id: 'm_affirm',
+        title: TaskTexts.affirmation,
+        phase: Phase.morning,
+        priority: Priority.P1,
+        energyCost: 5,
+        tags: [Tag.isMechanical],
+        hint: Tips.all['m2']?['body'],
+      ),
+      Task(
         id: study.taskId,
-        text: study.label == 'Английский'
-            ? TaskTexts.studyEnglish
-            : study.label == 'Unity'
-                ? TaskTexts.studyUnity
-                : TaskTexts.studyAI,
-        tipKeys: [study.tipKey],
-        tag: study.tag,
+        title: switch (study) {
+          StudyType.english => TaskTexts.studyEnglish,
+          StudyType.unity => TaskTexts.studyUnity,
+          StudyType.ai => TaskTexts.studyAI,
+        },
+        phase: Phase.morning,
+        priority: Priority.P1,
+        energyCost: 20,
+        tags: [Tag.isDeepWork],
+        timerMinutes: 10,
+        hint: Tips.all[study.tipKey]?['body'],
       ),
     ];
   }
 
-  List<TaskItem> get dayTasks => const [
-        TaskItem(
-            id: 'd_action',
-            text: TaskTexts.jobAction,
-            tipKeys: ['d1'],
-            tag: 'поиск'),
-        TaskItem(
-            id: 'd_wild',
-            text: TaskTexts.wildCard,
-            tipKeys: ['d2'],
-            tag: 'разрыв'),
-        TaskItem(
-            id: 'd_game',
-            text: TaskTexts.ownGame,
-            tipKeys: ['d3'],
-            tag: 'игра'),
+  List<Task> get dayTasks => [
+        Task(
+          id: 'd_action',
+          title: TaskTexts.jobAction,
+          phase: Phase.day,
+          priority: Priority.P0,
+          energyCost: 15,
+          tags: [Tag.isEssential],
+          hint: Tips.all['d1']?['body'],
+        ),
+        Task(
+          id: 'd_wild',
+          title: TaskTexts.wildCard,
+          phase: Phase.day,
+          priority: Priority.P2,
+          energyCost: 20,
+          tags: [Tag.isGrowth],
+          hint: Tips.all['d2']?['body'],
+        ),
+        Task(
+          id: 'd_game',
+          title: TaskTexts.ownGame,
+          phase: Phase.day,
+          priority: Priority.P1,
+          energyCost: 25,
+          tags: [Tag.isDeepWork, Tag.isGrowth],
+          timerMinutes: 10,
+          hint: Tips.all['d3']?['body'],
+        ),
       ];
 
-  List<TaskItem> get eveningTasks => const [
-        TaskItem(id: 'e_log', text: TaskTexts.dayLog),
-        TaskItem(id: 'e_shadow', text: TaskTexts.shadowDebug, tipKeys: ['e2']),
-        TaskItem(id: 'e_let', text: TaskTexts.letGo, tipKeys: ['e3']),
+  List<Task> get eveningTasks => [
+        Task(
+          id: 'e_log',
+          title: TaskTexts.dayLog,
+          phase: Phase.evening,
+          priority: Priority.P1,
+          energyCost: 10,
+          tags: [Tag.isMechanical],
+        ),
+        Task(
+          id: 'e_shadow',
+          title: TaskTexts.shadowDebug,
+          phase: Phase.evening,
+          priority: Priority.P1,
+          energyCost: 15,
+          tags: [],
+          hint: Tips.all['e2']?['body'],
+        ),
+        Task(
+          id: 'e_let',
+          title: TaskTexts.letGo,
+          phase: Phase.evening,
+          priority: Priority.P2,
+          energyCost: 5,
+          tags: [Tag.isMechanical],
+          hint: Tips.all['e3']?['body'],
+        ),
       ];
-
-  // ── Адаптированные задачи по состоянию ──────────────────
-  // Усталость → только 2 первые задачи утра + 1 дня
-  // Воодушевление → все задачи + бонусная
-  // Тревога → задачи в обычном порядке, но дыхание идёт первым (уже первое в списке)
-  // Остальные → все задачи без изменений
-
-  List<TaskItem> get adaptedMorningTasks {
-    final state = morningState;
-    final tasks = morningTasks;
-    if (state == 'Усталость') return tasks.take(2).toList();
-    if (state == 'Воодушевление') return [...tasks, _bonusTask];
-    return tasks;
-  }
-
-  List<TaskItem> get adaptedDayTasks {
-    final state = morningState;
-    final tasks = dayTasks;
-    if (state == 'Усталость') return tasks.take(1).toList();
-    if (state == 'Воодушевление') return tasks;
-    return tasks;
-  }
 
   // Бонусная задача для состояния "Воодушевление"
-  static const TaskItem _bonusTask = TaskItem(
-    id: 'bonus_energy',
-    text: 'Бонус: напиши одному человеку из индустрии — просто поздоровайся',
-    tipKeys: ['d1'],
-    tag: 'бонус',
-  );
+  Task get bonusTask => Task(
+        id: 'bonus_energy',
+        title: 'Бонус: напиши одному человеку из индустрии — просто поздоровайся',
+        phase: Phase.day,
+        priority: Priority.P2,
+        energyCost: 15,
+        tags: [Tag.isGrowth],
+      );
+
+  // Все фиксированные задачи (без кастомных и бонусной)
+  List<Task> get allFixedTasks => [
+        ...morningTasks,
+        ...dayTasks,
+        ...eveningTasks,
+      ];
 
   // ── Кастомные задачи ────────────────────────────────────
-  List<TaskItem> getCustomTasks(String phase) {
+  List<Task> getCustomTasks(String phase) {
     final key = 'cu_$phase';
     final json = _p.getString(key) ?? '[]';
+    final phaseEnum = switch (phase) {
+      'morning' => Phase.morning,
+      'day' => Phase.day,
+      _ => Phase.evening,
+    };
     try {
       final list = jsonDecode(json) as List;
       return list
-          .map((e) => TaskItem(
-              id: e['id'] as String, text: e['text'] as String, isCustom: true))
+          .map((e) => Task(
+                id: e['id'] as String,
+                title: e['text'] as String,
+                phase: phaseEnum,
+                priority: Priority.P1,
+                energyCost: 15,
+                tags: [],
+                isCustom: true,
+              ))
           .toList();
     } catch (_) {
       return [];
@@ -219,7 +260,7 @@ class DataService {
       'text': text
     };
     final encoded = jsonEncode([
-      ...tasks.map((t) => {'id': t.id, 'text': t.text}),
+      ...tasks.map((t) => {'id': t.id, 'text': t.title}),
       newTask
     ]);
     _p.setString(key, encoded);
@@ -229,11 +270,15 @@ class DataService {
     final key = 'cu_$phase';
     final tasks = getCustomTasks(phase).where((t) => t.id != id).toList();
     _p.setString(key,
-        jsonEncode(tasks.map((t) => {'id': t.id, 'text': t.text}).toList()));
+        jsonEncode(tasks.map((t) => {'id': t.id, 'text': t.title}).toList()));
   }
 
   // ── Выполнение задач ────────────────────────────────────
   bool isTaskDone(String id) => _p.getBool(PrefKeys.taskPrefix + id) ?? false;
+
+  void setTaskDone(String id, bool value) {
+    _p.setBool(PrefKeys.taskPrefix + id, value);
+  }
 
   void toggleTask(String id) {
     final key = PrefKeys.taskPrefix + id;
@@ -244,37 +289,25 @@ class DataService {
   // ── Прогресс ────────────────────────────────────────────
   List<String> get allTaskIds {
     final ids = <String>[];
-    for (final t in morningTasks) {
-      ids.add(t.id);
-    }
-    for (final t in dayTasks) {
-      ids.add(t.id);
-    }
-    for (final t in eveningTasks) {
-      ids.add(t.id);
-    }
-    for (final t in getCustomTasks('morning')) {
-      ids.add(t.id);
-    }
-    for (final t in getCustomTasks('day')) {
-      ids.add(t.id);
-    }
-    for (final t in getCustomTasks('evening')) {
-      ids.add(t.id);
-    }
+    for (final t in allFixedTasks) { ids.add(t.id); }
+    for (final t in getCustomTasks('morning')) { ids.add(t.id); }
+    for (final t in getCustomTasks('day')) { ids.add(t.id); }
+    for (final t in getCustomTasks('evening')) { ids.add(t.id); }
     return ids;
   }
 
   int get completedCount => allTaskIds.where(isTaskDone).length;
   int get totalCount => allTaskIds.length;
 
-  // ── Стрик ────────────────────────────────────────────────
+  // ── Стрик — только по P0 ────────────────────────────────
   int get streak => _p.getInt(PrefKeys.streak) ?? 0;
 
   void _checkStreakCompletion() {
-    final ids = allTaskIds;
-    final done = ids.where(isTaskDone).length;
-    if (done == ids.length && ids.isNotEmpty) {
+    // Стрик засчитывается только если все P0-задачи выполнены
+    final p0Tasks = allFixedTasks.where((t) => t.priority == Priority.P0).toList();
+    if (p0Tasks.isEmpty) return;
+    final allP0Done = p0Tasks.every((t) => isTaskDone(t.id));
+    if (allP0Done) {
       final today = _todayKey();
       if (_p.getString(PrefKeys.lastDay) != today) {
         _p.setString(PrefKeys.lastDay, today);
@@ -350,7 +383,6 @@ class DataService {
 
   // ── Сброс дня ───────────────────────────────────────────
   void resetDay() {
-    // Сохраняем стрик, смысл, расписание, кастомные задачи, автосинх
     final keep = <String, dynamic>{};
     final keepKeys = [
       PrefKeys.streak,
@@ -387,7 +419,7 @@ class DataService {
     final keys = _p.getKeys();
     final data = <String, dynamic>{};
     for (final k in keys) {
-      if (k == PrefKeys.ghToken) continue; // токен не синхронизируем
+      if (k == PrefKeys.ghToken) continue;
       data[k] = _p.get(k);
     }
     return data;
