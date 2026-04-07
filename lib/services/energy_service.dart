@@ -53,10 +53,19 @@ class EnergyService {
       return [...p0Tasks, if (others.isNotEmpty) others.first];
     }
 
-    // 3. Общая логика бюджета (для Обычного и Воодушевления)
-    // В MVP просто возвращаем отфильтрованные,
-    // но в будущем тут будет отсечение задач, не влезающих в лимит
-    return filtered.toList();
+    // 3. Воодушевление: добавляем бонусную isGrowth-задачу
+    final result = filtered.toList();
+    if (config.state == EnergyState.excited) {
+      final bonus = _ds.bonusTask.copyWith(
+        isCompleted: _ds.isTaskDone(_ds.bonusTask.id),
+      );
+      final alreadyPresent = result.any((t) => t.id == bonus.id);
+      if (!alreadyPresent) {
+        result.add(bonus);
+      }
+    }
+
+    return result;
   }
 
   // Цвет для Energy Bar
