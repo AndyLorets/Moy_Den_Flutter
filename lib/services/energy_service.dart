@@ -18,10 +18,20 @@ class EnergyService {
 
   // Рассчитать оставшуюся энергию
   int getRemainingEnergy(List<Task> allTasks) {
-    final limit = currentConfig.energyLimit;
+    final config = currentConfig;
+    final limit = config.energyLimit;
     int spent = 0;
 
-    for (final task in allTasks) {
+    // Включаем бонусную задачу если состояние Воодушевление
+    final tasks = [...allTasks];
+    if (config.state == EnergyState.excited) {
+      final bonus = _ds.bonusTask;
+      if (!tasks.any((t) => t.id == bonus.id)) {
+        tasks.add(bonus.copyWith(isCompleted: _ds.isTaskDone(bonus.id)));
+      }
+    }
+
+    for (final task in tasks) {
       if (task.isCompleted) {
         spent += getEffectiveCost(task);
       }
@@ -97,17 +107,31 @@ class EnergyService {
     return result;
   }
 
-  // Цвет для Energy Bar
+  // Задачи скрытые из-за бюджета (не P0, не выполненные, не влезли в лимит)
+  List<Task> getHiddenTasks(List<Task> tasks) {
+    final visible = getVisibleTasks(tasks);
+    final visibleIds = visible.map((t) => t.id).toSet();
+    return tasks.where((t) => !visibleIds.contains(t.id)).toList();
+  }
+
+  // Заполнение бара (0.0–1.0) относительно текущего лимита состояния
+  // При Усталости (лимит 40): 40/40 = 1.0 в начале, убывает при выполнении
+  // При Воодушевлении (лимит 120): 120/120 = 1.0 в начале, убывает при выполнении
   double getEnergyPercent(List<Task> allTasks) {
     final limit = currentConfig.energyLimit;
     if (limit == 0) return 0;
     return getRemainingEnergy(allTasks) / limit;
   }
 
-  // Определение цвета для UI
-  dynamic getEnergyColor(double percent) {
-    if (percent > 0.6) return 0xFF4CAF50; // Green
-    if (percent > 0.3) return 0xFFFFC107; // Amber
+  // Реальный остаток энергии в % (для отображения цифры пользователю)
+  int getRemainingPercent(List<Task> allTasks) {
+    return getRemainingEnergy(allTasks);
+  }
+
+  // Цвет по реальному остатку (в %, от 0 до 120+)
+  dynamic getEnergyColor(int remainingPercent) {
+    if (remainingPercent > 60) return 0xFF4CAF50; // Green
+    if (remainingPercent > 30) return 0xFFFFC107; // Amber
     return 0xFFF44336; // Red
   }
 

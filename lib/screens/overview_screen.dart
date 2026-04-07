@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/data_service.dart';
 import '../services/energy_service.dart';
 import '../models/task.dart';
+import '../models/state_config.dart';
 import '../widgets/tip_sheet.dart';
 import 'focus_mode_screen.dart';
 
@@ -96,7 +97,8 @@ class _OverviewScreenState extends State<OverviewScreen>
         children: [
           _PhaseTab(
             phase: 'morning',
-            fixedTasks: _ds.morningTasks,
+            fixedTasks: EnergyService.instance.getVisibleTasks(_ds.morningTasks),
+            hiddenTasks: EnergyService.instance.getHiddenTasks(_ds.morningTasks),
             customTasks: _ds.getCustomTasks('morning'),
             addCtrl: _addMorningCtrl,
             onToggle: _toggle,
@@ -107,6 +109,7 @@ class _OverviewScreenState extends State<OverviewScreen>
           _PhaseTab(
             phase: 'day',
             fixedTasks: EnergyService.instance.getVisibleTasks(_ds.dayTasks),
+            hiddenTasks: EnergyService.instance.getHiddenTasks(_ds.dayTasks),
             customTasks: _ds.getCustomTasks('day'),
             addCtrl: _addDayCtrl,
             onToggle: _toggle,
@@ -116,7 +119,8 @@ class _OverviewScreenState extends State<OverviewScreen>
           ),
           _PhaseTab(
             phase: 'evening',
-            fixedTasks: _ds.eveningTasks,
+            fixedTasks: EnergyService.instance.getVisibleTasks(_ds.eveningTasks),
+            hiddenTasks: EnergyService.instance.getHiddenTasks(_ds.eveningTasks),
             customTasks: _ds.getCustomTasks('evening'),
             addCtrl: _addEveningCtrl,
             onToggle: _toggle,
@@ -134,6 +138,7 @@ class _OverviewScreenState extends State<OverviewScreen>
 class _PhaseTab extends StatelessWidget {
   final String phase;
   final List<Task> fixedTasks;
+  final List<Task> hiddenTasks;
   final List<Task> customTasks;
   final TextEditingController addCtrl;
   final ValueChanged<String> onToggle;
@@ -144,6 +149,7 @@ class _PhaseTab extends StatelessWidget {
   const _PhaseTab({
     required this.phase,
     required this.fixedTasks,
+    required this.hiddenTasks,
     required this.customTasks,
     required this.addCtrl,
     required this.onToggle,
@@ -155,6 +161,7 @@ class _PhaseTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ds = DataService.instance;
+    final theme = Theme.of(context);
     return ListView(
       padding: const EdgeInsets.only(bottom: 32),
       children: [
@@ -174,13 +181,44 @@ class _PhaseTab extends StatelessWidget {
               onDelete: () => onRemoveCustom(t.id),
             )),
         _AddTaskRow(ctrl: addCtrl, onAdd: onAddCustom),
+        if (hiddenTasks.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+            child: Row(
+              children: [
+                Icon(Icons.hourglass_disabled_outlined, size: 16,
+                    color: theme.colorScheme.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Text(
+                  'Не хватает энергии (${hiddenTasks.length})',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ...hiddenTasks.map((t) => Opacity(
+                opacity: 0.4,
+                child: _TaskTile(
+                  task: t,
+                  done: ds.isTaskDone(t.id),
+                  onTap: () => onToggle(t.id),
+                  onFocus: () => onStartFocus(t),
+                  onTip: t.hint != null
+                      ? () =>
+                          showTipSheet(context, title: t.title, body: t.hint!)
+                      : null,
+                ),
+              )),
+        ],
       ],
     );
   }
 }
 
 // ── Тайл фиксированной задачи ─────────────────────────────────
-class _TaskTile extends StatelessWidget {
+class _TaskTile extends StatefulWidget {
   final Task task;
   final bool done;
   final VoidCallback onTap;
@@ -195,57 +233,93 @@ class _TaskTile extends StatelessWidget {
     this.onTip,
   });
 
+  @override
+  State<_TaskTile> createState() => _TaskTileState();
+}
+
+class _TaskTileState extends State<_TaskTile>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _scale = TweenSequence([
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.35), weight: 40),
+      TweenSequenceItem(tween: Tween(begin: 1.35, end: 0.9), weight: 30),
+      TweenSequenceItem(tween: Tween(begin: 0.9, end: 1.0), weight: 30),
+    ]).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _handleTap() {
+    if (!widget.done) {
+      // Анимация только при отметке выполненным
+      _ctrl.forward(from: 0);
+    }
+    widget.onTap();
+  }
+
   String _priorityLabel(Priority p) {
     switch (p) {
-      case Priority.P0:
-        return 'P0';
-      case Priority.P1:
-        return 'P1';
-      case Priority.P2:
-        return 'P2';
+      case Priority.P0: return 'P0';
+      case Priority.P1: return 'P1';
+      case Priority.P2: return 'P2';
     }
   }
 
   Color _priorityColor(Priority p, BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     switch (p) {
-      case Priority.P0:
-        return scheme.error;
-      case Priority.P1:
-        return scheme.primary;
-      case Priority.P2:
-        return scheme.outline;
+      case Priority.P0: return scheme.error;
+      case Priority.P1: return scheme.primary;
+      case Priority.P2: return scheme.outline;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final done = widget.done;
+    final task = widget.task;
     return InkWell(
-      onTap: onTap,
+      onTap: _handleTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 22,
-              height: 22,
-              margin: const EdgeInsets.only(top: 1),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: done ? theme.colorScheme.primary : Colors.transparent,
-                border: Border.all(
-                  color: done
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.outline,
-                  width: 2,
+            ScaleTransition(
+              scale: _scale,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 22,
+                height: 22,
+                margin: const EdgeInsets.only(top: 1),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: done ? theme.colorScheme.primary : Colors.transparent,
+                  border: Border.all(
+                    color: done
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.outline,
+                    width: 2,
+                  ),
                 ),
+                child: done
+                    ? const Icon(Icons.check, size: 14, color: Colors.white)
+                    : null,
               ),
-              child: done
-                  ? const Icon(Icons.check, size: 14, color: Colors.white)
-                  : null,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -280,26 +354,21 @@ class _TaskTile extends StatelessWidget {
                       ),
                       if (task.energyCost > 0) ...[
                         const SizedBox(width: 6),
-                        Text(
-                          '${task.energyCost}%',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
+                        _EnergyCostBadge(task: task),
                       ],
                     ],
                   ),
                 ],
               ),
             ),
-            if (onTip != null)
+            if (widget.onTip != null)
               _SmallButton(
                 icon: Icons.help_outline,
-                onTap: onTip!,
+                onTap: widget.onTip!,
               ),
             _SmallButton(
               icon: Icons.play_circle_outline,
-              onTap: onFocus,
+              onTap: widget.onFocus,
             ),
           ],
         ),
@@ -434,6 +503,50 @@ class _SmallButton extends StatelessWidget {
           color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
       ),
+    );
+  }
+}
+
+// ── Бейдж стоимости задачи ────────────────────────────────────
+class _EnergyCostBadge extends StatelessWidget {
+  final Task task;
+  const _EnergyCostBadge({required this.task});
+
+  @override
+  Widget build(BuildContext context) {
+    final es = EnergyService.instance;
+    final config = es.currentConfig;
+    final base = task.energyCost;
+    final effective = es.getEffectiveCost(task);
+    final hasDiscount = config.state == EnergyState.excited && effective < base;
+
+    final textStyle = Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        );
+
+    if (!hasDiscount) {
+      return Text('$base%', style: textStyle);
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '$base%',
+          style: textStyle?.copyWith(
+            decoration: TextDecoration.lineThrough,
+            decorationColor: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(width: 3),
+        Icon(Icons.bolt, size: 11,
+            color: Theme.of(context).colorScheme.primary),
+        Text('$effective%',
+            style: textStyle?.copyWith(
+              color: Theme.of(context).colorScheme.primary,
+              fontWeight: FontWeight.bold,
+            )),
+      ],
     );
   }
 }

@@ -6,6 +6,7 @@ import 'overview_screen.dart';
 import 'focus_mode_screen.dart';
 import '../services/energy_service.dart';
 import '../models/task.dart';
+import '../models/state_config.dart';
 
 // Фаза дня
 enum DayPhase { morning, day, evening }
@@ -109,7 +110,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final phase = _phase;
     final state = _ds.morningState;
 
-    final energyPercent = energyService.getEnergyPercent(_allTasks);
+    final energyBarFill = energyService.getEnergyPercent(_allTasks);
+    final energyRemaining = energyService.getRemainingPercent(_allTasks);
 
     return Scaffold(
       body: SafeArea(
@@ -117,37 +119,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
           padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
           children: [
             // ── Заголовок ──────────────────────────────────
-            _Header(greeting: _greeting, streak: streak, study: study),
+            _Header(greeting: _greeting, streak: streak, study: study, state: state),
             const SizedBox(height: 14),
 
             // ── Прогресс ───────────────────────────────────
-            _EnergyBar(percent: energyPercent),
+            _EnergyBar(fill: energyBarFill, remaining: energyRemaining),
             const SizedBox(height: 20),
 
-            // ── Баннер адаптации ───────────────────────────
-            if (state == 'Усталость') ...[
-              _AdaptBanner(
-                icon: '😴',
-                text:
-                    'Режим усталости — только самое важное. Сделай хоть немного.',
-                color: Colors.orange,
-              ),
-              const SizedBox(height: 12),
-            ] else if (state == 'Воодушевление') ...[
-              _AdaptBanner(
-                icon: '🚀',
-                text: 'Энергия есть — добавлена бонусная задача!',
-                color: Colors.blue,
-              ),
-              const SizedBox(height: 12),
-            ] else if (state == 'Тревога') ...[
-              _AdaptBanner(
-                icon: '🌬️',
-                text: 'Начни с дыхания. Три цикла — и тревога снизится.',
-                color: Colors.red,
-              ),
-              const SizedBox(height: 12),
-            ],
 
             // ── Зачем я это делаю ──────────────────────────
             _SmyslCard(
@@ -307,8 +285,9 @@ class _Header extends StatelessWidget {
   final String greeting;
   final int streak;
   final StudyType study;
+  final String state;
   const _Header(
-      {required this.greeting, required this.streak, required this.study});
+      {required this.greeting, required this.streak, required this.study, required this.state});
 
   String _formatDate() {
     final now = DateTime.now();
@@ -366,22 +345,30 @@ class _Header extends StatelessWidget {
               style: theme.textTheme.headlineSmall
                   ?.copyWith(fontWeight: FontWeight.bold),
             ),
-            if (streak > 0)
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.tertiaryContainer,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '🔥 $streak',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: theme.colorScheme.onTertiaryContainer,
-                    fontWeight: FontWeight.bold,
+            Row(
+              children: [
+                if (state.isNotEmpty) ...[
+                  _StateBadge(state: state),
+                  const SizedBox(width: 8),
+                ],
+                if (streak > 0)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.tertiaryContainer,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '🔥 $streak',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: theme.colorScheme.onTertiaryContainer,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                ),
-              ),
+              ],
+            ),
           ],
         ),
         const SizedBox(height: 6),
@@ -432,16 +419,19 @@ class _StudyBadge extends StatelessWidget {
 
 // ── Энерджи бар ──────────────────────────────────────────────
 class _EnergyBar extends StatelessWidget {
-  final double percent;
-  const _EnergyBar({required this.percent});
+  final double fill;       // 0.0–1.0 для прогресс-бара (relative to current limit)
+  final int remaining;     // реальный остаток в % для отображения цифры
+
+  const _EnergyBar({required this.fill, required this.remaining});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final energyService = EnergyService.instance;
 
-    final colorValue = energyService.getEnergyColor(percent);
+    final colorValue = energyService.getEnergyColor(remaining);
     final color = Color(colorValue is int ? colorValue : 0xFF4CAF50);
+    final isExcited = energyService.currentConfig.state == EnergyState.excited;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -452,16 +442,22 @@ class _EnergyBar extends StatelessWidget {
             Text('Запас сил',
                 style: theme.textTheme.labelMedium
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-            Text('${(percent * 100).toInt()}%',
-                style: theme.textTheme.labelLarge
-                    ?.copyWith(color: color, fontWeight: FontWeight.bold)),
+            Row(
+              children: [
+                if (isExcited)
+                  Icon(Icons.bolt, size: 16, color: color),
+                Text('$remaining%',
+                    style: theme.textTheme.labelLarge
+                        ?.copyWith(color: color, fontWeight: FontWeight.bold)),
+              ],
+            ),
           ],
         ),
         const SizedBox(height: 8),
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
-            value: percent,
+            value: fill.clamp(0.0, 1.0),
             minHeight: 8,
             backgroundColor: theme.colorScheme.surfaceContainerHighest,
             valueColor: AlwaysStoppedAnimation(color),
@@ -868,34 +864,41 @@ class _NextStepCard extends StatelessWidget {
 
 // ── Все задачи сделаны ───────────────────────────────────────
 // ── Баннер адаптации под состояние ──────────────────────────
-class _AdaptBanner extends StatelessWidget {
-  final String icon;
-  final String text;
-  final Color color;
-  const _AdaptBanner(
-      {required this.icon, required this.text, required this.color});
+class _StateBadge extends StatelessWidget {
+  final String state;
+  const _StateBadge({required this.state});
+
+  ({String icon, Color color}) _props(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return switch (state) {
+      'Усталость'     => (icon: '😴', color: Colors.orange),
+      'Тревога'       => (icon: '🌬️', color: Colors.red),
+      'Воодушевление' => (icon: '⚡', color: scheme.primary),
+      _               => (icon: '✓',  color: scheme.outline),
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final p = _props(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        color: p.color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: p.color.withValues(alpha: 0.3)),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(icon, style: const TextStyle(fontSize: 18)),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              text,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: color.withValues(alpha: 0.9),
-                height: 1.4,
-              ),
+          Text(p.icon, style: const TextStyle(fontSize: 12)),
+          const SizedBox(width: 4),
+          Text(
+            state,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: p.color,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],
@@ -938,9 +941,22 @@ class _AllDoneCard extends StatelessWidget {
 class _HardSheet extends StatelessWidget {
   const _HardSheet();
 
+  Task? _getMicroTask() {
+    final ds = DataService.instance;
+    final all = [...ds.morningTasks, ...ds.dayTasks, ...ds.eveningTasks];
+    final mechanical = all
+        .where((t) => t.tags.contains(Tag.isMechanical) && !ds.isTaskDone(t.id))
+        .toList();
+    if (mechanical.isEmpty) return null;
+    mechanical.sort((a, b) => a.energyCost.compareTo(b.energyCost));
+    return mechanical.first;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final microTask = _getMicroTask();
+
     return Padding(
       padding: EdgeInsets.fromLTRB(
           20, 20, 20, 20 + MediaQuery.of(context).viewInsets.bottom),
@@ -989,12 +1005,29 @@ class _HardSheet extends StatelessWidget {
               color: theme.colorScheme.primaryContainer,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Text(
-              'Одна микро-задача: встань, выпей воды, сделай три вдоха.',
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(color: theme.colorScheme.onPrimaryContainer),
+            child: Row(
+              children: [
+                const Text('⚡', style: TextStyle(fontSize: 16)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    microTask?.title ?? 'Встань, выпей воды, сделай три вдоха.',
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(color: theme.colorScheme.onPrimaryContainer),
+                  ),
+                ),
+              ],
             ),
           ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Вернуться к дню'),
+            ),
+          ),
+          const SizedBox(height: 4),
         ],
       ),
     );
