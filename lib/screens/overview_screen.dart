@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/data_service.dart';
+import '../services/energy_service.dart';
 import '../models/task.dart';
 import '../widgets/tip_sheet.dart';
 import 'focus_mode_screen.dart';
@@ -105,7 +106,7 @@ class _OverviewScreenState extends State<OverviewScreen>
           ),
           _PhaseTab(
             phase: 'day',
-            fixedTasks: _ds.dayTasks,
+            fixedTasks: EnergyService.instance.getVisibleTasks(_ds.dayTasks),
             customTasks: _ds.getCustomTasks('day'),
             addCtrl: _addDayCtrl,
             onToggle: _toggle,
