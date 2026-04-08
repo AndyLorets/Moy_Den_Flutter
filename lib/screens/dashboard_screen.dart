@@ -4,6 +4,7 @@ import '../constants/strings.dart';
 import '../widgets/tip_sheet.dart';
 import 'overview_screen.dart';
 import 'focus_mode_screen.dart';
+import 'reflection_screen.dart';
 import '../services/energy_service.dart';
 import '../models/task.dart';
 import '../models/state_config.dart';
@@ -20,25 +21,6 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   final _ds = DataService.instance;
-  final _smyslController = TextEditingController();
-  final _fearController = TextEditingController();
-  final _insightController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _smyslController.text = _ds.smysl;
-    _fearController.text = _ds.fear;
-    _insightController.text = _ds.insight;
-  }
-
-  @override
-  void dispose() {
-    _smyslController.dispose();
-    _fearController.dispose();
-    _insightController.dispose();
-    super.dispose();
-  }
 
   // TODO: убрать _debugPhase перед релизом
   DayPhase? _debugPhase;
@@ -95,12 +77,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _refresh() => setState(() {});
 
-  void _showTip(String key) {
-    final tip = Tips.all[key];
-    if (tip == null) return;
-    showTipSheet(context, title: tip['title']!, body: tip['body']!);
-  }
-
   @override
   Widget build(BuildContext context) {
     final energyService = EnergyService.instance;
@@ -119,72 +95,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
           padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
           children: [
             // ── Заголовок ──────────────────────────────────
-            _Header(greeting: _greeting, streak: streak, study: study, state: state),
+            _Header(greeting: _greeting, streak: streak, study: study),
+            const SizedBox(height: 14),
+
+            // ── Выбор состояния ────────────────────────────
+            _StateSelector(
+              current: state,
+              onChanged: (v) {
+                _ds.morningState = v;
+                _refresh();
+              },
+            ),
             const SizedBox(height: 14),
 
             // ── Прогресс ───────────────────────────────────
             _EnergyBar(fill: energyBarFill, remaining: energyRemaining),
             const SizedBox(height: 20),
-
-
-            // ── Зачем я это делаю ──────────────────────────
-            _SmyslCard(
-              controller: _smyslController,
-              onChanged: (v) => _ds.smysl = v,
-            ),
-            const SizedBox(height: 12),
-
-            // ── Утренние блоки ─────────────────────────────
-            if (phase == DayPhase.morning) ...[
-              _ConflictCard(
-                value: _ds.conflict,
-                onChanged: (v) {
-                  _ds.conflict = v;
-                  _refresh();
-                },
-                onTip: () => _showTip('mc'),
-              ),
-              const SizedBox(height: 12),
-              _StateCard(
-                value: _ds.morningState,
-                onChanged: (v) {
-                  _ds.morningState = v;
-                  _refresh();
-                },
-                onTip: () => _showTip('emo'),
-              ),
-              const SizedBox(height: 12),
-            ],
-
-            // ── Дневной блок — мотивация ───────────────────
-            if (phase == DayPhase.day) ...[
-              _MotivCard(
-                value: _ds.motiv,
-                onChanged: (v) {
-                  _ds.motiv = v;
-                  _refresh();
-                },
-                onTip: () => _showTip('dm'),
-              ),
-              const SizedBox(height: 12),
-            ],
-
-            // ── Вечерние блоки ─────────────────────────────
-            if (phase == DayPhase.evening) ...[
-              _AffirmCard(),
-              const SizedBox(height: 12),
-              _FearCard(
-                controller: _fearController,
-                onChanged: (v) => _ds.fear = v,
-                onTip: () => _showTip('e2'),
-              ),
-              const SizedBox(height: 12),
-              _InsightCard(
-                controller: _insightController,
-                onChanged: (v) => _ds.insight = v,
-              ),
-              const SizedBox(height: 12),
-            ],
 
             // ── Следующий шаг ──────────────────────────────
             if (next != null)
@@ -209,22 +135,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
               _AllDoneCard(streak: streak),
             const SizedBox(height: 12),
 
-            // ── Все задачи ─────────────────────────────────
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () async {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => OverviewScreen(onChanged: _refresh),
-                    ),
-                  );
-                  _refresh();
-                },
-                icon: const Icon(Icons.list_alt),
-                label: const Text('Все задачи'),
-              ),
+            // ── Навигационные кнопки ───────────────────────
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => OverviewScreen(onChanged: _refresh),
+                        ),
+                      );
+                      _refresh();
+                    },
+                    icon: const Icon(Icons.list_alt),
+                    label: const Text('Все задачи'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ReflectionScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.edit_note),
+                    label: const Text('Рефлексия'),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
 
@@ -285,9 +229,8 @@ class _Header extends StatelessWidget {
   final String greeting;
   final int streak;
   final StudyType study;
-  final String state;
   const _Header(
-      {required this.greeting, required this.streak, required this.study, required this.state});
+      {required this.greeting, required this.streak, required this.study});
 
   String _formatDate() {
     final now = DateTime.now();
@@ -345,30 +288,22 @@ class _Header extends StatelessWidget {
               style: theme.textTheme.headlineSmall
                   ?.copyWith(fontWeight: FontWeight.bold),
             ),
-            Row(
-              children: [
-                if (state.isNotEmpty) ...[
-                  _StateBadge(state: state),
-                  const SizedBox(width: 8),
-                ],
-                if (streak > 0)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.tertiaryContainer,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '🔥 $streak',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: theme.colorScheme.onTertiaryContainer,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+            if (streak > 0)
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.tertiaryContainer,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '🔥 $streak',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.onTertiaryContainer,
+                    fontWeight: FontWeight.bold,
                   ),
-              ],
-            ),
+                ),
+              ),
           ],
         ),
         const SizedBox(height: 6),
@@ -468,316 +403,6 @@ class _EnergyBar extends StatelessWidget {
   }
 }
 
-// ── Зачем я это делаю ────────────────────────────────────────
-class _SmyslCard extends StatelessWidget {
-  final TextEditingController controller;
-  final ValueChanged<String> onChanged;
-  const _SmyslCard({required this.controller, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('// зачем я это делаю',
-                style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.primary, letterSpacing: 1.2)),
-            const SizedBox(height: 8),
-            TextField(
-              controller: controller,
-              maxLines: null,
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(fontStyle: FontStyle.italic),
-              decoration: InputDecoration(
-                hintText: smyslPlaceholder,
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-              ),
-              onChanged: onChanged,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Конфликт бессознательного (утро) ─────────────────────────
-class _ConflictCard extends StatelessWidget {
-  final String value;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onTip;
-  const _ConflictCard(
-      {required this.value, required this.onChanged, required this.onTip});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text('// конфликт бессознательного',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        letterSpacing: 1.1)),
-                const Spacer(),
-                _TipBtn(onTap: onTip),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              conflictQuestion,
-              style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant, height: 1.5),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: ConflictOptions.all.map((opt) {
-                final selected = value == opt['value'];
-                return _ChoiceChip(
-                  label: opt['label']!,
-                  selected: selected,
-                  selectedColor: switch (opt['value']) {
-                    'align' => Colors.green,
-                    'conflict' => Colors.red,
-                    _ => Colors.orange,
-                  },
-                  onTap: () => onChanged(selected ? '' : opt['value']!),
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Состояние утра ───────────────────────────────────────────
-class _StateCard extends StatelessWidget {
-  final String value;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onTip;
-  const _StateCard(
-      {required this.value, required this.onChanged, required this.onTip});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text('// состояние утра',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        letterSpacing: 1.1)),
-                const Spacer(),
-                _TipBtn(onTap: onTip),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: MorningStates.all.map((s) {
-                final selected = value == s;
-                return _ChoiceChip(
-                  label: s,
-                  selected: selected,
-                  selectedColor: theme.colorScheme.primary,
-                  onTap: () => onChanged(selected ? '' : s),
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Из какого состояния действовал (день) ────────────────────
-class _MotivCard extends StatelessWidget {
-  final String value;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onTip;
-  const _MotivCard(
-      {required this.value, required this.onChanged, required this.onTip});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text('// из какого состояния действовал?',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        letterSpacing: 1.1)),
-                const Spacer(),
-                _TipBtn(onTap: onTip),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: _MotivBtn(
-                    label: '😰 Из страха',
-                    selected: value == 'fear',
-                    selectedColor: Colors.red,
-                    onTap: () => onChanged(value == 'fear' ? '' : 'fear'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _MotivBtn(
-                    label: '🚀 Из свободы',
-                    selected: value == 'free',
-                    selectedColor: Colors.green,
-                    onTap: () => onChanged(value == 'free' ? '' : 'free'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Аффирмация (вечер) ───────────────────────────────────────
-class _AffirmCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
-        border: Border(
-            left: BorderSide(color: theme.colorScheme.tertiary, width: 3)),
-      ),
-      child: Text(
-        Affirmations.evening,
-        style: theme.textTheme.bodyMedium?.copyWith(
-          fontStyle: FontStyle.italic,
-          height: 1.7,
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-      ),
-    );
-  }
-}
-
-// ── Что не сделал из-за страха (вечер) ──────────────────────
-class _FearCard extends StatelessWidget {
-  final TextEditingController controller;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onTip;
-  const _FearCard(
-      {required this.controller, required this.onChanged, required this.onTip});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text('// что не сделал из-за страха?',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                        color: Colors.red.shade400, letterSpacing: 1.1)),
-                const Spacer(),
-                _TipBtn(onTap: onTip),
-              ],
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: controller,
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(fontStyle: FontStyle.italic),
-              decoration: const InputDecoration(
-                hintText: 'Назови это — уже станет легче...',
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-              ),
-              onChanged: onChanged,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Инсайт дня (вечер) ──────────────────────────────────────
-class _InsightCard extends StatelessWidget {
-  final TextEditingController controller;
-  final ValueChanged<String> onChanged;
-  const _InsightCard({required this.controller, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('// один инсайт дня',
-                style: theme.textTheme.labelSmall?.copyWith(
-                    color: Colors.green.shade600, letterSpacing: 1.1)),
-            const SizedBox(height: 8),
-            TextField(
-              controller: controller,
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(fontStyle: FontStyle.italic),
-              decoration: const InputDecoration(
-                hintText: 'Что понял сегодня?',
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-              ),
-              onChanged: onChanged,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 // ── Следующий шаг ────────────────────────────────────────────
 class _NextStepCard extends StatelessWidget {
   final Task task;
@@ -862,47 +487,57 @@ class _NextStepCard extends StatelessWidget {
   }
 }
 
-// ── Все задачи сделаны ───────────────────────────────────────
-// ── Баннер адаптации под состояние ──────────────────────────
-class _StateBadge extends StatelessWidget {
-  final String state;
-  const _StateBadge({required this.state});
-
-  ({String icon, Color color}) _props(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return switch (state) {
-      'Усталость'     => (icon: '😴', color: Colors.orange),
-      'Тревога'       => (icon: '🌬️', color: Colors.red),
-      'Воодушевление' => (icon: '⚡', color: scheme.primary),
-      _               => (icon: '✓',  color: scheme.outline),
-    };
-  }
+// ── Inline выбор состояния ────────────────────────────────────
+class _StateSelector extends StatelessWidget {
+  final String current;
+  final ValueChanged<String> onChanged;
+  const _StateSelector({required this.current, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final p = _props(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: p.color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: p.color.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(p.icon, style: const TextStyle(fontSize: 12)),
-          const SizedBox(width: 4),
-          Text(
-            state,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: p.color,
-              fontWeight: FontWeight.bold,
+    final states = [
+      (value: '',             label: 'Обычное',       icon: '○',  color: theme.colorScheme.outline),
+      (value: 'Усталость',    label: 'Усталость',     icon: '😴', color: Colors.orange),
+      (value: 'Тревога',      label: 'Тревога',       icon: '🌬️', color: Colors.red),
+      (value: 'Воодушевление',label: 'Воодушевление', icon: '⚡', color: theme.colorScheme.primary),
+    ];
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: states.map((s) {
+        final selected = current == s.value;
+        return GestureDetector(
+          onTap: () => onChanged(s.value),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              color: selected
+                  ? s.color.withValues(alpha: 0.12)
+                  : theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: selected ? s.color : theme.colorScheme.outlineVariant,
+                width: selected ? 1.5 : 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(s.icon, style: const TextStyle(fontSize: 13)),
+                const SizedBox(width: 5),
+                Text(s.label,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: selected ? s.color : theme.colorScheme.onSurfaceVariant,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                    )),
+              ],
             ),
           ),
-        ],
-      ),
+        );
+      }).toList(),
     );
   }
 }
@@ -1034,110 +669,4 @@ class _HardSheet extends StatelessWidget {
   }
 }
 
-// ── Вспомогательные виджеты ──────────────────────────────────
 
-class _TipBtn extends StatelessWidget {
-  final VoidCallback onTap;
-  const _TipBtn({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 22,
-        height: 22,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border:
-              Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-        ),
-        child: Icon(Icons.question_mark,
-            size: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
-      ),
-    );
-  }
-}
-
-class _ChoiceChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final Color selectedColor;
-  final VoidCallback onTap;
-  const _ChoiceChip(
-      {required this.label,
-      required this.selected,
-      required this.selectedColor,
-      required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: selected
-              ? selectedColor.withValues(alpha: 0.12)
-              : theme.colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: selected ? selectedColor : theme.colorScheme.outlineVariant,
-          ),
-        ),
-        child: Text(
-          label,
-          style: theme.textTheme.labelMedium?.copyWith(
-            color:
-                selected ? selectedColor : theme.colorScheme.onSurfaceVariant,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MotivBtn extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final Color selectedColor;
-  final VoidCallback onTap;
-  const _MotivBtn(
-      {required this.label,
-      required this.selected,
-      required this.selectedColor,
-      required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(vertical: 11),
-        decoration: BoxDecoration(
-          color: selected
-              ? selectedColor.withValues(alpha: 0.12)
-              : theme.colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: selected ? selectedColor : theme.colorScheme.outlineVariant,
-          ),
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: theme.textTheme.labelMedium?.copyWith(
-            color:
-                selected ? selectedColor : theme.colorScheme.onSurfaceVariant,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-          ),
-        ),
-      ),
-    );
-  }
-}

@@ -110,9 +110,10 @@ class _MorningEntryState extends State<_MorningEntry> {
   }
 
   void _selectState(String s) {
-    final next = s == _selectedState ? '' : s;
-    setState(() => _selectedState = next);
-    widget.ds.morningState = next; // сохраняем сразу
+    // 'Обычное' хранится как '' (дефолт для StateConfig)
+    final value = s == 'Обычное' ? '' : s;
+    setState(() => _selectedState = value);
+    widget.ds.morningState = value;
   }
 
   @override
@@ -142,7 +143,7 @@ class _MorningEntryState extends State<_MorningEntry> {
             spacing: 8,
             runSpacing: 8,
             children: MorningStates.all.map((s) {
-              final selected = _selectedState == s;
+              final selected = s == 'Обычное' ? _selectedState == '' : _selectedState == s;
               final color = _stateColor(s, theme);
               return GestureDetector(
                 onTap: () => _selectState(s),
@@ -180,10 +181,7 @@ class _MorningEntryState extends State<_MorningEntry> {
           if (_selectedState == 'Тревога') ...[
             _AnxietyHint(),
             const SizedBox(height: 16),
-          ],
-
-          // Подсказка при усталости
-          if (_selectedState == 'Усталость') ...[
+          ] else if (_selectedState == 'Усталость') ...[
             _TiredHint(),
             const SizedBox(height: 16),
           ],
@@ -251,12 +249,10 @@ class _MorningEntryState extends State<_MorningEntry> {
   }
 
   Color _stateColor(String state, ThemeData theme) => switch (state) {
-        'Тревога' => Colors.red,
-        'Уверенность' => Colors.green,
-        'Воодушевление' => Colors.blue,
-        'Усталость' => Colors.orange,
-        'Спокойствие' => theme.colorScheme.primary,
-        _ => theme.colorScheme.onSurfaceVariant,
+        'Усталость'     => Colors.orange,
+        'Тревога'       => Colors.red,
+        'Воодушевление' => theme.colorScheme.primary,
+        _               => theme.colorScheme.outline, // Обычное
       };
 }
 
