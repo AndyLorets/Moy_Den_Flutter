@@ -130,9 +130,9 @@ class EnergyService {
 
   // Цвет по реальному остатку (в %, от 0 до 120+)
   dynamic getEnergyColor(int remainingPercent) {
-    if (remainingPercent > 60) return 0xFF4CAF50; // Green
-    if (remainingPercent > 30) return 0xFFFFC107; // Amber
-    return 0xFFF44336; // Red
+    if (remainingPercent > 60) return 0xFF27AE60; // Green
+    if (remainingPercent > 30) return 0xFFF39C12; // Amber
+    return 0xFFE74C3C; // Red
   }
 
   // Сохранение в стрит (через DataService) выполняется только если P0 закрыты

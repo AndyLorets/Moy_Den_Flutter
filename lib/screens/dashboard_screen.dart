@@ -5,6 +5,8 @@ import '../widgets/tip_sheet.dart';
 import 'overview_screen.dart';
 import 'focus_mode_screen.dart';
 import 'reflection_screen.dart';
+import 'help_screen.dart';
+import 'schedule_screen.dart';
 import '../services/energy_service.dart';
 import '../models/task.dart';
 import '../models/state_config.dart';
@@ -67,12 +69,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     for (final t in _visibleTasksForPhase) {
       if (!t.isCompleted) return t;
     }
-    // Если в текущей фазе всё сделано — ищем во всех видимых задачах
-    final allVisible = EnergyService.instance.getVisibleTasks(_allTasks);
-    for (final t in allVisible) {
-      if (!t.isCompleted) return t;
-    }
     return null;
+  }
+
+  // Все задачи текущей фазы выполнены, но есть незавершённые в других фазах
+  bool get _isPhaseComplete {
+    if (_nextTask != null) return false;
+    final allVisible = EnergyService.instance.getVisibleTasks(_allTasks);
+    return allVisible.any((t) => !t.isCompleted);
   }
 
   void _refresh() => setState(() {});
@@ -131,6 +135,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         title: next.title, body: next.hint!)
                     : null,
               )
+            else if (_isPhaseComplete)
+              _PhaseDoneCard(phase: phase, onNavigate: _refresh)
             else
               _AllDoneCard(streak: streak),
             const SizedBox(height: 12),
@@ -365,7 +371,7 @@ class _EnergyBar extends StatelessWidget {
     final energyService = EnergyService.instance;
 
     final colorValue = energyService.getEnergyColor(remaining);
-    final color = Color(colorValue is int ? colorValue : 0xFF4CAF50);
+    final color = Color(colorValue is int ? colorValue : 0xFF27AE60);
     final isExcited = energyService.currentConfig.state == EnergyState.excited;
 
     return Column(
@@ -538,6 +544,107 @@ class _StateSelector extends StatelessWidget {
           ),
         );
       }).toList(),
+    );
+  }
+}
+
+// ── Фаза завершена ───────────────────────────────────────────
+class _PhaseDoneCard extends StatelessWidget {
+  final DayPhase phase;
+  final VoidCallback onNavigate;
+  const _PhaseDoneCard({required this.phase, required this.onNavigate});
+
+  String get _phaseLabel => switch (phase) {
+        DayPhase.morning => 'утро',
+        DayPhase.day => 'день',
+        DayPhase.evening => 'вечер',
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('✅  Ты выполнил все задачи на $_phaseLabel',
+              style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSecondaryContainer)),
+          const SizedBox(height: 8),
+          Text('Отдохни или загляни сюда:',
+              style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSecondaryContainer
+                      .withValues(alpha: 0.7))),
+          const SizedBox(height: 16),
+          _NavButton(
+            icon: Icons.list_alt,
+            label: 'Задачи на день',
+            onTap: () async {
+              await Navigator.push(context,
+                  MaterialPageRoute(
+                      builder: (_) => OverviewScreen(onChanged: onNavigate)));
+              onNavigate();
+            },
+          ),
+          const SizedBox(height: 8),
+          _NavButton(
+            icon: Icons.calendar_today,
+            label: 'Расписание',
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const ScheduleScreen())),
+          ),
+          const SizedBox(height: 8),
+          _NavButton(
+            icon: Icons.menu_book,
+            label: 'Справка',
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const HelpScreen())),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NavButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  const _NavButton({required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: theme.colorScheme.primary),
+            const SizedBox(width: 12),
+            Text(label,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.w500)),
+            const Spacer(),
+            Icon(Icons.chevron_right, size: 18,
+                color: theme.colorScheme.onSurfaceVariant),
+          ],
+        ),
+      ),
     );
   }
 }
