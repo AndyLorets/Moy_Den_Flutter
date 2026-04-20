@@ -31,6 +31,17 @@
 - [x] Микро-задача в FAB «Мне тяжело»
 - [x] Анимация чекбокса в Overview
 
+### ✅ Этап 3.6 — UI/UX v3 (выполнено)
+- [x] `SmartEntryScreen` — bento 2×2 сетка состояний с offset-эффектом, blob-фоны
+- [x] `DashboardScreen` — editorial Energy Bar (большой %), кастомный `_BottomNav`, `_NextStepCard` с цветной левой полосой, `_HardFab` красный FAB
+- [x] `FocusModeScreen` — Stack с blob, P0-чип, headlineLarge заголовок
+- [x] `FocusSessionScreen` — 3 кольца + `CircularProgressIndicator`, пульсирующие blob-анимации, режим Тревоги без таймера
+- [x] `CompletionScreen` — конфетти-сетка иконок, Energy Insight Card, адаптивные кнопки по energyLevel
+- [x] `OverviewScreen` — filter chips вместо TabBar, `_P0Card` с анимацией, заблокированные задачи через Opacity
+- [x] `main.dart` упрощён — NavigationBar shell убран, Dashboard сам управляет навигацией
+- [x] `colorSchemeSeed` изменён на зелёный `#006F1D` по UI_UX.md
+- [x] `flutter build web` проходит без ошибок
+
 ### 📋 Этап 4 — Platform
 - Система профилей, конструктор задач с ветками, все шаблоны, экспорт/импорт, Web деплой
 
@@ -76,7 +87,7 @@
 
 - [x] **Цвета Energy Bar** — приведены к строгим HEX из UI_UX.md (`#27AE60` / `#F39C12` / `#E74C3C`)
 - [x] **Dashboard: фаза завершена** — вместо задач из следующей фазы показывается `_PhaseDoneCard` с мотивирующим текстом и ссылками на Задачи / Расписание / Справку
-- [ ] **Другие экраны** — описание UI для FocusMode, Completion, Overview, SmartEntry ещё не написано в UI_UX.md и не сверено с кодом
+- [x] **Все экраны** — SmartEntry, Dashboard, FocusMode, FocusSession, Completion, Overview полностью переписаны по UI_UX.md
 
 ### 🟢 Низкий приоритет — платформа и релиз
 

@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter analyze *)",
+      "Bash(flutter build *)",
+      "Bash(dart compile *)",
+      "Bash(dart analyze *)",
+      "Bash(flutter run *)",
+      "Bash(flutter pub *)",
+      "Bash(flutter clean *)",
+      "Bash(flutter precache *)",
+      "Bash(where flutter *)",
+      "Bash(flutter --version)",
+      "Read(//c/src/flutter/bin/cache/artifacts//**)",
+      "Bash(flutter upgrade *)",
+      "Read(//c/src/flutter/**)",
+      "Bash(dart pub *)"
+    ],
+    "additionalDirectories": [
+      "C:\\src\\flutter\\bin\\cache\\dart-sdk\\bin\\resources\\devtools\\assets\\fonts"
+    ]
+  }
+}

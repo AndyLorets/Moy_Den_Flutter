@@ -6,131 +6,241 @@ import '../models/task.dart';
 import '../models/state_config.dart';
 import '../constants/strings.dart';
 
-// Экран Focus Mode — одна задача на весь экран
+// ── Focus Mode — одна задача на весь экран ────────────────────
 class FocusModeScreen extends StatelessWidget {
   final Task task;
   final VoidCallback onDone;
 
   const FocusModeScreen({super.key, required this.task, required this.onDone});
 
+  String _priorityLabel(Priority p) => switch (p) {
+        Priority.P0 => 'P0',
+        Priority.P1 => 'P1',
+        Priority.P2 => 'P2',
+      };
+
+  bool get _isP0 => task.priority == Priority.P0;
+  bool get _isAnxiety =>
+      EnergyService.instance.currentConfig.state == EnergyState.anxiety;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Spacer(),
-              Text(
-                'ФОКУС',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  letterSpacing: 3,
-                ),
+      backgroundColor: theme.colorScheme.surface,
+      body: Stack(
+        children: [
+          // Фоновый blob
+          Positioned(
+            top: -80,
+            left: -80,
+            child: Container(
+              width: 400,
+              height: 400,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: theme.colorScheme.primary.withValues(alpha: 0.05),
               ),
-              const SizedBox(height: 16),
-              Text(
-                task.title,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  height: 1.4,
-                ),
-              ),
-              if (task.tags.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 6,
-                  children: task.tags.map((tag) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      _tagLabel(tag),
-                      style: theme.textTheme.labelSmall,
-                    ),
-                  )).toList(),
-                ),
-              ],
-              if (task.hint != null) ...[
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    task.hint!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-              ],
-              const Spacer(),
-              if (EnergyService.instance.currentConfig.state != EnergyState.anxiety)
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: () => Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            FocusSessionScreen(task: task, onDone: onDone),
-                      ),
-                    ),
-                    icon: const Icon(Icons.timer_outlined),
-                    label: const Text('Запустить таймер'),
-                  ),
-                ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () {
-                    DataService.instance.toggleTask(task.id);
-                    onDone();
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Отметить выполненным'),
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
+            ),
           ),
-        ),
+          Positioned(
+            bottom: -80,
+            right: -80,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: theme.colorScheme.secondaryContainer
+                    .withValues(alpha: 0.1),
+              ),
+            ),
+          ),
+          // Основной контент
+          SafeArea(
+            child: Column(
+              children: [
+                // Header с кнопкой назад
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                        style: IconButton.styleFrom(
+                          backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                          shape: const CircleBorder(),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Мой день',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Центральная область
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 28),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Чип приоритета
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 18, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: _isP0
+                                ? theme.colorScheme.primaryContainer
+                                : theme.colorScheme.surfaceContainerHigh,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _isP0 ? Icons.anchor : Icons.radio_button_checked,
+                                size: 14,
+                                color: _isP0
+                                    ? theme.colorScheme.onPrimaryContainer
+                                    : theme.colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                _isP0
+                                    ? '${_priorityLabel(task.priority)} Якорь'
+                                    : _priorityLabel(task.priority),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: _isP0
+                                      ? theme.colorScheme.onPrimaryContainer
+                                      : theme.colorScheme.onSurfaceVariant,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+                        // Название задачи
+                        Text(
+                          task.title,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.headlineLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
+                            height: 1.15,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        if (task.hint != null) ...[
+                          const SizedBox(height: 20),
+                          Text(
+                            task.hint!,
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              height: 1.5,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 52),
+                        // Кнопка «Поехали» или «Отметить»
+                        if (!_isAnxiety) ...[
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton(
+                              onPressed: () => Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => FocusSessionScreen(
+                                      task: task, onDone: onDone),
+                                ),
+                              ),
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 18),
+                                shape: const StadiumBorder(),
+                                shadowColor: theme.colorScheme.primary
+                                    .withValues(alpha: 0.3),
+                                elevation: 6,
+                              ),
+                              child: const Text(
+                                'Поехали',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            onPressed: () {
+                              DataService.instance.toggleTask(task.id);
+                              onDone();
+                              Navigator.pop(context);
+                            },
+                            style: OutlinedButton.styleFrom(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 16),
+                              shape: const StadiumBorder(),
+                            ),
+                            child: const Text('Отметить выполненным'),
+                          ),
+                        ),
+                        if (_isAnxiety) ...[
+                          const SizedBox(height: 20),
+                          Text(
+                            'Начни с малого. Ты уже здесь — это достаточно.',
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // FAB «Мне тяжело»
+          Positioned(
+            bottom: 32,
+            right: 24,
+            child: SafeArea(
+              child: FloatingActionButton.extended(
+                onPressed: () {},
+                backgroundColor: const Color(0xFFE74C3C),
+                foregroundColor: Colors.white,
+                icon: const Icon(Icons.sentiment_dissatisfied),
+                label: const Text('Мне тяжело',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                shape: const StadiumBorder(),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
-
-  String _tagLabel(Tag tag) {
-    switch (tag) {
-      case Tag.isMechanical:
-        return 'механическое';
-      case Tag.isEssential:
-        return 'важное';
-      case Tag.isDeepWork:
-        return 'глубокая работа';
-      case Tag.isGrowth:
-        return 'рост';
-    }
-  }
 }
 
-// Экран Focus Session — таймер обратного отсчёта
+// ── Focus Session — таймер с пульсирующим кругом ──────────────
 class FocusSessionScreen extends StatefulWidget {
   final Task task;
   final VoidCallback onDone;
@@ -143,20 +253,28 @@ class FocusSessionScreen extends StatefulWidget {
 }
 
 class _FocusSessionScreenState extends State<FocusSessionScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   static const List<int> _durations = [5, 10, 15, 20, 25];
   int _selectedMinutes = 10;
   int _secondsLeft = 0;
   bool _running = false;
   Timer? _timer;
-  late AnimationController _pulseController;
+
+  late AnimationController _pulseOuter;
+  late AnimationController _pulseInner;
 
   @override
   void initState() {
     super.initState();
     _selectedMinutes = widget.task.timerMinutes ?? 10;
     _secondsLeft = _selectedMinutes * 60;
-    _pulseController = AnimationController(
+
+    _pulseOuter = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat(reverse: true);
+
+    _pulseInner = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
@@ -165,7 +283,8 @@ class _FocusSessionScreenState extends State<FocusSessionScreen>
   @override
   void dispose() {
     _timer?.cancel();
-    _pulseController.dispose();
+    _pulseOuter.dispose();
+    _pulseInner.dispose();
     super.dispose();
   }
 
@@ -188,14 +307,6 @@ class _FocusSessionScreenState extends State<FocusSessionScreen>
   void _pauseTimer() {
     _timer?.cancel();
     setState(() => _running = false);
-  }
-
-  void _resetTimer() {
-    _timer?.cancel();
-    setState(() {
-      _running = false;
-      _secondsLeft = _selectedMinutes * 60;
-    });
   }
 
   void _onComplete() {
@@ -222,149 +333,410 @@ class _FocusSessionScreenState extends State<FocusSessionScreen>
   double get _progress =>
       _selectedMinutes > 0 ? 1 - _secondsLeft / (_selectedMinutes * 60) : 0;
 
+  bool get _isAnxiety =>
+      EnergyService.instance.currentConfig.state == EnergyState.anxiety;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isAnxiety = EnergyService.instance.currentConfig.state == EnergyState.anxiety;
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              if (!isAnxiety && !_running) ...[
-                Text(
-                  'Выбери длительность',
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+      backgroundColor: theme.colorScheme.surface,
+      body: Stack(
+        children: [
+          // Фоновые blob-элементы
+          Positioned(
+            top: MediaQuery.of(context).size.height * 0.15,
+            left: -60,
+            child: AnimatedBuilder(
+              animation: _pulseOuter,
+              builder: (_, __) => Opacity(
+                opacity: 0.05 + _pulseOuter.value * 0.05,
+                child: Container(
+                  width: 320,
+                  height: 320,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: theme.colorScheme.primaryContainer,
                   ),
                 ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  children: _durations.map((m) {
-                    final selected = m == _selectedMinutes;
-                    return ChoiceChip(
-                      label: Text('$m мин'),
-                      selected: selected,
-                      onSelected: (_) => setState(() {
-                        _selectedMinutes = m;
-                        _secondsLeft = m * 60;
-                      }),
-                    );
-                  }).toList(),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: MediaQuery.of(context).size.height * 0.15,
+            right: -60,
+            child: AnimatedBuilder(
+              animation: _pulseInner,
+              builder: (_, __) => Opacity(
+                opacity: 0.05 + _pulseInner.value * 0.05,
+                child: Container(
+                  width: 260,
+                  height: 260,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: theme.colorScheme.secondaryContainer,
+                  ),
                 ),
-                const SizedBox(height: 24),
-              ],
-              const Spacer(),
-              if (!isAnxiety) ...[
-                AnimatedBuilder(
-                  animation: _pulseController,
-                  builder: (_, __) {
-                    final scale =
-                        _running ? 1.0 + _pulseController.value * 0.02 : 1.0;
-                    return Transform.scale(
-                      scale: scale,
-                      child: SizedBox(
-                        width: 200,
-                        height: 200,
-                        child: Stack(
-                          alignment: Alignment.center,
+              ),
+            ),
+          ),
+          SafeArea(
+            child: Column(
+              children: [
+                // Header
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () => Navigator.pop(context),
+                        style: IconButton.styleFrom(
+                          backgroundColor:
+                              theme.colorScheme.surfaceContainerHighest,
+                          shape: const CircleBorder(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Название задачи
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primaryContainer
+                              .withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            SizedBox(
-                              width: 200,
-                              height: 200,
-                              child: CircularProgressIndicator(
-                                value: _progress,
-                                strokeWidth: 6,
-                                backgroundColor:
-                                    theme.colorScheme.surfaceContainerHighest,
-                                valueColor: AlwaysStoppedAnimation(
-                                  theme.colorScheme.primary,
-                                ),
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: theme.colorScheme.primary,
                               ),
                             ),
+                            const SizedBox(width: 6),
                             Text(
-                              _timeString,
-                              style: theme.textTheme.displayMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                fontFeatures: const [
-                                  FontFeature.tabularFigures()
-                                ],
+                              'В процессе',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.onPrimaryContainer,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.8,
                               ),
                             ),
                           ],
                         ),
                       ),
-                    );
-                  },
+                      const SizedBox(height: 12),
+                      Text(
+                        widget.task.title,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 24),
-              ],
-              Text(
-                widget.task.title,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              if (isAnxiety) ...[
-                const SizedBox(height: 16),
-                Text(
-                  'Начни с малого. Ты уже здесь — это достаточно.',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                const Spacer(),
+                // Выбор длительности (до старта, не тревога)
+                if (!_isAnxiety && !_running && _secondsLeft == _selectedMinutes * 60) ...[
+                  Wrap(
+                    spacing: 8,
+                    children: _durations.map((m) {
+                      final sel = m == _selectedMinutes;
+                      return ChoiceChip(
+                        label: Text('$m мин'),
+                        selected: sel,
+                        onSelected: (_) => setState(() {
+                          _selectedMinutes = m;
+                          _secondsLeft = m * 60;
+                        }),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+                // Таймер-круг
+                if (!_isAnxiety)
+                  _TimerCircle(
+                    timeString: _timeString,
+                    progress: _progress,
+                    pulseAnim: _pulseOuter,
+                    running: _running,
+                  )
+                else
+                  _AnxietyMode(taskTitle: widget.task.title),
+                const Spacer(),
+                // Кнопки управления
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                  child: Column(
+                    children: [
+                      if (!_isAnxiety)
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed:
+                                    _running ? _pauseTimer : _startTimer,
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 16),
+                                  shape: const StadiumBorder(),
+                                ),
+                                child: Text(
+                                  _running ? 'Пауза' : 'Старт',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 2,
+                              child: FilledButton(
+                                onPressed: _onComplete,
+                                style: FilledButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 16),
+                                  shape: const StadiumBorder(),
+                                ),
+                                child: const Text(
+                                  'Готово',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      else
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            onPressed: _onComplete,
+                            style: FilledButton.styleFrom(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 16),
+                              shape: const StadiumBorder(),
+                            ),
+                            child: const Text('Готово',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16)),
+                          ),
+                        ),
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: _onComplete,
+                        child: const Text('Завершить досрочно'),
+                      ),
+                    ],
                   ),
                 ),
               ],
-              const Spacer(),
-              if (!isAnxiety)
-                Row(
-                  children: [
-                    if (_running || _secondsLeft < _selectedMinutes * 60)
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: _resetTimer,
-                          child: const Text('Сбросить'),
-                        ),
-                      ),
-                    if (_running || _secondsLeft < _selectedMinutes * 60)
-                      const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: FilledButton.icon(
-                        onPressed: _running ? _pauseTimer : _startTimer,
-                        icon: Icon(_running ? Icons.pause : Icons.play_arrow),
-                        label: Text(_running ? 'Пауза' : 'Старт'),
-                      ),
-                    ),
-                  ],
-                ),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: _onComplete,
-                child: const Text('Завершить досрочно'),
-              ),
-              const SizedBox(height: 8),
-            ],
+            ),
           ),
-        ),
+          // FAB
+          Positioned(
+            bottom: 24,
+            right: 24,
+            child: SafeArea(
+              child: FloatingActionButton.extended(
+                heroTag: 'focus_session_fab',
+                onPressed: () {},
+                backgroundColor: const Color(0xFFE74C3C),
+                foregroundColor: Colors.white,
+                icon: const Icon(Icons.favorite),
+                label: const Text('Мне тяжело',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                shape: const StadiumBorder(),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-// Экран Completion — после выполнения задачи
+// ── Круглый таймер ────────────────────────────────────────────
+class _TimerCircle extends StatelessWidget {
+  final String timeString;
+  final double progress;
+  final AnimationController pulseAnim;
+  final bool running;
+
+  const _TimerCircle({
+    required this.timeString,
+    required this.progress,
+    required this.pulseAnim,
+    required this.running,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AnimatedBuilder(
+      animation: pulseAnim,
+      builder: (_, __) {
+        final scale = running ? 1.0 + pulseAnim.value * 0.015 : 1.0;
+        return Transform.scale(
+          scale: scale,
+          child: SizedBox(
+            width: 260,
+            height: 260,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Внешнее кольцо
+                Container(
+                  width: 260,
+                  height: 260,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                      width: 2,
+                    ),
+                  ),
+                ),
+                // Среднее кольцо
+                Container(
+                  width: 240,
+                  height: 240,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.06),
+                      width: 1,
+                    ),
+                  ),
+                ),
+                // Прогресс-круг
+                SizedBox(
+                  width: 220,
+                  height: 220,
+                  child: CircularProgressIndicator(
+                    value: progress,
+                    strokeWidth: 6,
+                    backgroundColor:
+                        theme.colorScheme.surfaceContainerHighest,
+                    valueColor: AlwaysStoppedAnimation(
+                        theme.colorScheme.primary),
+                    strokeCap: StrokeCap.round,
+                  ),
+                ),
+                // Время
+                Container(
+                  width: 200,
+                  height: 200,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: theme.colorScheme.surface,
+                    boxShadow: [
+                      BoxShadow(
+                        color: theme.colorScheme.primary
+                            .withValues(alpha: 0.05),
+                        blurRadius: 40,
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        timeString,
+                        style: theme.textTheme.displayMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: -1,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.timer_outlined,
+                              size: 14,
+                              color: theme.colorScheme.onSurfaceVariant),
+                          const SizedBox(width: 4),
+                          Text(
+                            'минуты',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ── Режим тревоги (без таймера) ───────────────────────────────
+class _AnxietyMode extends StatelessWidget {
+  final String taskTitle;
+  const _AnxietyMode({required this.taskTitle});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        children: [
+          Icon(
+            Icons.self_improvement,
+            size: 80,
+            color: theme.colorScheme.primary.withValues(alpha: 0.4),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            taskTitle,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Начни с малого. Ты уже здесь — это достаточно.',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Completion Screen — экран успеха ──────────────────────────
 class CompletionScreen extends StatelessWidget {
   final Task task;
   final VoidCallback onAnother;
@@ -390,33 +762,31 @@ class CompletionScreen extends StatelessWidget {
   String _buildMessage(double energy, StateConfig config) {
     final ds = DataService.instance;
 
-    // Тревога — после любой задачи
     if (config.state == EnergyState.anxiety) {
       return SupportMessages.anxietyAfterTask;
     }
-
-    // Усталость + задача P0
     if (config.state == EnergyState.fatigue && task.priority == Priority.P0) {
       return SupportMessages.p0InFatigue;
     }
-
-    // Воодушевление + задача isGrowth (включая бонусную)
     if (config.state == EnergyState.excited &&
         task.tags.contains(Tag.isGrowth)) {
       return SupportMessages.excitedBonusDone;
     }
-
-    // Первая задача дня — только одна выполнена
     final allTasks = [...ds.morningTasks, ...ds.dayTasks, ...ds.eveningTasks];
     final doneCount = allTasks.where((t) => ds.isTaskDone(t.id)).length;
-    if (doneCount == 1) {
-      return SupportMessages.firstTaskDone;
-    }
-
-    // Дефолт по энергии
+    if (doneCount == 1) return SupportMessages.firstTaskDone;
     if (energy < 0.1) return 'Лимит исчерпан. Пора восстановиться.';
     if (energy < 0.3) return 'Хорошая работа. Можно остановиться.';
     return 'Ты сделал шаг.';
+  }
+
+  String _energyStateLabel(StateConfig config, double energy) {
+    if (config.state == EnergyState.fatigue) return 'Усталость';
+    if (config.state == EnergyState.anxiety) return 'Тревога';
+    if (config.state == EnergyState.excited) return 'Воодушевление';
+    if (energy < 0.3) return 'Низкая энергия';
+    if (energy < 0.6) return 'Средний запас';
+    return 'Высокий потенциал';
   }
 
   @override
@@ -424,66 +794,273 @@ class CompletionScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final energy = _getCurrentEnergy();
     final config = EnergyService.instance.currentConfig;
-
     final lowEnergy = energy < 0.3 || config.state == EnergyState.fatigue;
     final message = _buildMessage(energy, config);
+    final energyLabel = _energyStateLabel(config, energy);
 
     return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Spacer(),
-              Text('✓', style: theme.textTheme.displayLarge),
-              const SizedBox(height: 24),
-              Text(
-                message,
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                task.title,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                child: lowEnergy
-                    ? OutlinedButton(
-                        onPressed: onAnother,
-                        child: const Text('Ещё одно'),
-                      )
-                    : FilledButton(
-                        onPressed: onAnother,
-                        child: const Text('Ещё одно'),
+      backgroundColor: theme.colorScheme.surface,
+      body: Stack(
+        children: [
+          // Фоновый blob
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Opacity(
+                opacity: 0.15,
+                child: Stack(
+                  children: [
+                    Positioned(
+                      top: MediaQuery.of(context).size.height * 0.1,
+                      left: MediaQuery.of(context).size.width * 0.2,
+                      child: Container(
+                        width: 400,
+                        height: 400,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: lowEnergy
+                              ? theme.colorScheme.tertiaryContainer
+                              : theme.colorScheme.primaryContainer,
+                        ),
                       ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: lowEnergy
-                    ? FilledButton(
-                        onPressed: onEnough,
-                        style: FilledButton.styleFrom(
-                            backgroundColor: theme.colorScheme.secondary),
-                        child: const Text('Достаточно на сегодня'),
-                      )
-                    : OutlinedButton(
-                        onPressed: onEnough,
-                        child: const Text('Достаточно на сегодня'),
+                    ),
+                    Positioned(
+                      bottom: MediaQuery.of(context).size.height * 0.1,
+                      right: MediaQuery.of(context).size.width * 0.2,
+                      child: Container(
+                        width: 300,
+                        height: 300,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: theme.colorScheme.secondaryContainer,
+                        ),
                       ),
+                    ),
+                  ],
+                ),
               ),
-            ],
+            ),
           ),
-        ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                children: [
+                  const Spacer(),
+                  // Конфетти-иконки
+                  _ConfettiGrid(lowEnergy: lowEnergy),
+                  const SizedBox(height: 28),
+                  // Заголовок
+                  RichText(
+                    textAlign: TextAlign.center,
+                    text: TextSpan(
+                      style: theme.textTheme.displaySmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        height: 1.1,
+                        color: theme.colorScheme.onSurface,
+                        letterSpacing: -1,
+                      ),
+                      children: [
+                        const TextSpan(text: 'Ты сделал\n'),
+                        TextSpan(
+                          text: 'шаг.',
+                          style: TextStyle(
+                              color: lowEnergy
+                                  ? theme.colorScheme.tertiary
+                                  : theme.colorScheme.primary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    message,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  // Energy Insight Card
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                          color: theme.colorScheme.outlineVariant
+                              .withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: (lowEnergy
+                                    ? theme.colorScheme.tertiaryContainer
+                                    : theme.colorScheme.primaryContainer)
+                                .withValues(alpha: 0.5),
+                          ),
+                          child: Icon(
+                            lowEnergy
+                                ? Icons.battery_2_bar
+                                : Icons.battery_full,
+                            color: lowEnergy
+                                ? theme.colorScheme.tertiary
+                                : theme.colorScheme.primary,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Состояние: $energyLabel',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: lowEnergy
+                                      ? theme.colorScheme.tertiary
+                                      : theme.colorScheme.primary,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                lowEnergy
+                                    ? 'Рекомендуем небольшую паузу'
+                                    : 'Есть силы продолжить',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  // Адаптивные кнопки
+                  Column(
+                    children: [
+                      // Главная кнопка зависит от энергии
+                      SizedBox(
+                        width: double.infinity,
+                        child: lowEnergy
+                            ? FilledButton.icon(
+                                onPressed: onEnough,
+                                icon: const Icon(Icons.coffee),
+                                label: const Text('Отдохнуть'),
+                                style: FilledButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 20),
+                                  shape: const StadiumBorder(),
+                                  backgroundColor:
+                                      theme.colorScheme.tertiary,
+                                  foregroundColor:
+                                      theme.colorScheme.onTertiary,
+                                  textStyle: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                              )
+                            : FilledButton.icon(
+                                onPressed: onAnother,
+                                icon: const Icon(Icons.arrow_forward),
+                                label: const Text('Следующая задача'),
+                                style: FilledButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 20),
+                                  shape: const StadiumBorder(),
+                                  textStyle: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Вторичная кнопка
+                      SizedBox(
+                        width: double.infinity,
+                        child: lowEnergy
+                            ? OutlinedButton.icon(
+                                onPressed: onAnother,
+                                icon: const Icon(Icons.arrow_forward,
+                                    size: 16),
+                                label: const Text('Следующая задача'),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 14),
+                                  shape: const StadiumBorder(),
+                                ),
+                              )
+                            : OutlinedButton(
+                                onPressed: onEnough,
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 14),
+                                  shape: const StadiumBorder(),
+                                ),
+                                child: const Text('Достаточно на сегодня'),
+                              ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                  // Цитата
+                  Text(
+                    '"Отдых — это не отсутствие действий, а восстановление ресурса."',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant
+                          .withValues(alpha: 0.6),
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Конфетти-иконки ───────────────────────────────────────────
+class _ConfettiGrid extends StatelessWidget {
+  final bool lowEnergy;
+  const _ConfettiGrid({required this.lowEnergy});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final items = [
+      (icon: Icons.spa,               color: theme.colorScheme.primary),
+      (icon: Icons.favorite,          color: theme.colorScheme.tertiary),
+      (icon: Icons.energy_savings_leaf,color: theme.colorScheme.secondary),
+      (icon: Icons.celebration,       color: theme.colorScheme.tertiary),
+      (icon: Icons.task_alt,          color: theme.colorScheme.primary),
+      (icon: Icons.stars,             color: theme.colorScheme.secondary),
+    ];
+
+    return SizedBox(
+      width: 200,
+      height: 120,
+      child: GridView.count(
+        crossAxisCount: 3,
+        physics: const NeverScrollableScrollPhysics(),
+        shrinkWrap: true,
+        children: items
+            .map((e) => Icon(e.icon,
+                color: e.color.withValues(alpha: 0.8), size: 32))
+            .toList(),
       ),
     );
   }

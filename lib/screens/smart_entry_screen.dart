@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/data_service.dart';
 import '../constants/strings.dart';
-import '../widgets/tip_sheet.dart';
 import 'dashboard_screen.dart' show DayPhase;
 
-// Smart Entry — экран при первом открытии за день.
 class SmartEntryScreen extends StatefulWidget {
   final VoidCallback onDone;
   const SmartEntryScreen({super.key, required this.onDone});
@@ -19,19 +17,16 @@ class _SmartEntryScreenState extends State<SmartEntryScreen>
   late AnimationController _fadeCtrl;
   late Animation<double> _fadeAnim;
 
-  // Для дебага: null = авто по времени, иначе принудительная фаза
   DayPhase? _debugPhase;
 
   @override
   void initState() {
     super.initState();
     _fadeCtrl = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 600),
       vsync: this,
     );
-    _fadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeInOut),
-    );
+    _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
     _fadeCtrl.forward();
   }
 
@@ -49,16 +44,6 @@ class _SmartEntryScreenState extends State<SmartEntryScreen>
     return DayPhase.evening;
   }
 
-  void _cyclePhase() {
-    setState(() {
-      _debugPhase = switch (_phase) {
-        DayPhase.morning => DayPhase.day,
-        DayPhase.day => DayPhase.evening,
-        DayPhase.evening => DayPhase.morning,
-      };
-    });
-  }
-
   void _finish() {
     _ds.markEntryShown();
     widget.onDone();
@@ -69,28 +54,83 @@ class _SmartEntryScreenState extends State<SmartEntryScreen>
     return FadeTransition(
       opacity: _fadeAnim,
       child: Scaffold(
-        body: SafeArea(
-          child: switch (_phase) {
-            DayPhase.morning => _MorningEntry(ds: _ds, onDone: _finish),
-            DayPhase.day => _DayEntry(ds: _ds, onDone: _finish),
-            DayPhase.evening => _EveningEntry(ds: _ds, onDone: _finish),
-          },
-        ),
-        floatingActionButton: FloatingActionButton.small(
-          onPressed: _cyclePhase,
-          tooltip: 'Сменить фазу (дебаг)',
-          child: Text(switch (_phase) {
-            DayPhase.morning => '☀️',
-            DayPhase.day => '⚡',
-            DayPhase.evening => '🌙',
-          }),
+        body: Stack(
+          children: [
+            // Фоновые blob-элементы
+            Positioned(
+              top: -80,
+              right: -80,
+              child: Container(
+                width: 320,
+                height: 320,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .primaryContainer
+                      .withValues(alpha: 0.25),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: -100,
+              left: -80,
+              child: Container(
+                width: 280,
+                height: 280,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .secondaryContainer
+                      .withValues(alpha: 0.15),
+                ),
+              ),
+            ),
+            SafeArea(
+              child: switch (_phase) {
+                DayPhase.morning => _MorningEntry(ds: _ds, onDone: _finish),
+                DayPhase.day => _DayEntry(ds: _ds, onDone: _finish),
+                DayPhase.evening => _EveningEntry(ds: _ds, onDone: _finish),
+              },
+            ),
+            // Дебаг-кнопка фазы
+            Positioned(
+              bottom: 16,
+              left: 16,
+              child: SafeArea(
+                child: TextButton(
+                  onPressed: () => setState(() {
+                    _debugPhase = switch (_phase) {
+                      DayPhase.morning => DayPhase.day,
+                      DayPhase.day => DayPhase.evening,
+                      DayPhase.evening => DayPhase.morning,
+                    };
+                  }),
+                  child: Text(
+                    switch (_phase) {
+                      DayPhase.morning => '☀️ утро',
+                      DayPhase.day => '⚡ день',
+                      DayPhase.evening => '🌙 вечер',
+                    },
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .outlineVariant,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-// ── Утренний вход ────────────────────────────────────────────
+// ── Утренний вход — bento-сетка состояний ──────────────────────
 class _MorningEntry extends StatefulWidget {
   final DataService ds;
   final VoidCallback onDone;
@@ -103,136 +143,206 @@ class _MorningEntry extends StatefulWidget {
 class _MorningEntryState extends State<_MorningEntry> {
   late String _selectedState;
 
+  static const _states = [
+    (value: 'Воодушевление', label: 'В восторге',  sub: 'High Energy', emoji: '🤩'),
+    (value: '',              label: 'Хорошо',       sub: 'Balanced',    emoji: '😊'),
+    (value: 'Усталость',    label: 'Устал(а)',      sub: 'Low Energy',  emoji: '😴'),
+    (value: 'Тревога',      label: 'Тревожно',      sub: 'Focus needed',emoji: '😟'),
+  ];
+
   @override
   void initState() {
     super.initState();
     _selectedState = widget.ds.morningState;
   }
 
-  void _selectState(String s) {
-    // 'Обычное' хранится как '' (дефолт для StateConfig)
-    final value = s == 'Обычное' ? '' : s;
-    setState(() => _selectedState = value);
-    widget.ds.morningState = value;
+  void _selectState(String v) {
+    setState(() => _selectedState = v);
+    widget.ds.morningState = v;
   }
+
+  Color _cardColor(String value, ThemeData theme, bool selected) {
+    if (!selected) return theme.colorScheme.surface;
+    return switch (value) {
+      'Воодушевление' => theme.colorScheme.primaryContainer,
+      'Усталость'     => Colors.orange.withValues(alpha: 0.15),
+      'Тревога'       => theme.colorScheme.secondaryContainer,
+      _               => theme.colorScheme.primaryContainer,
+    };
+  }
+
+  Color _accentColor(String value, ThemeData theme) => switch (value) {
+    'Воодушевление' => theme.colorScheme.primary,
+    'Усталость'     => Colors.orange,
+    'Тревога'       => theme.colorScheme.secondary,
+    _               => theme.colorScheme.primary,
+  };
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final firstTask = widget.ds.morningTasks.first;
-
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Spacer(),
-          Text(
-            'Доброе утро',
-            style: theme.textTheme.displaySmall
-                ?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Как ты сейчас?',
-            style: theme.textTheme.titleMedium
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-          ),
-          const SizedBox(height: 24),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: MorningStates.all.map((s) {
-              final selected = s == 'Обычное' ? _selectedState == '' : _selectedState == s;
-              final color = _stateColor(s, theme);
-              return GestureDetector(
-                onTap: () => _selectState(s),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? color.withValues(alpha: 0.15)
-                        : theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color:
-                          selected ? color : theme.colorScheme.outlineVariant,
-                      width: selected ? 1.5 : 1,
-                    ),
-                  ),
-                  child: Text(
-                    s,
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color:
-                          selected ? color : theme.colorScheme.onSurfaceVariant,
-                      fontWeight:
-                          selected ? FontWeight.w600 : FontWeight.normal,
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 20),
-
-          // Подсказка при тревоге
-          if (_selectedState == 'Тревога') ...[
-            _AnxietyHint(),
-            const SizedBox(height: 16),
-          ] else if (_selectedState == 'Усталость') ...[
-            _TiredHint(),
-            const SizedBox(height: 16),
-          ],
-
-          // Первая задача
+          const SizedBox(height: 32),
+          // Бейдж фазы
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: theme.colorScheme.outlineVariant),
+              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.play_circle_outline,
-                    color: theme.colorScheme.primary),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Начни с',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant)),
-                      const SizedBox(height: 2),
-                      Text(firstTask.title,
-                          style: theme.textTheme.bodyMedium
-                              ?.copyWith(fontWeight: FontWeight.w500)),
-                    ],
+                Icon(Icons.wb_sunny, size: 14, color: theme.colorScheme.primary),
+                const SizedBox(width: 6),
+                Text(
+                  'УТРЕННИЙ ПОТОК',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.primary,
+                    letterSpacing: 1.5,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                if (firstTask.hint != null)
-                  IconButton(
-                    icon: const Icon(Icons.help_outline, size: 18),
-                    onPressed: () {
-                      showTipSheet(context,
-                          title: firstTask.title, body: firstTask.hint!);
-                    },
-                    style: IconButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: const Size(32, 32)),
-                  ),
               ],
             ),
           ),
-          const Spacer(),
+          const SizedBox(height: 20),
+          // Заголовок
+          RichText(
+            text: TextSpan(
+              style: theme.textTheme.displaySmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                height: 1.1,
+              ),
+              children: [
+                const TextSpan(text: 'Как ты\n'),
+                TextSpan(
+                  text: 'сегодня?',
+                  style: TextStyle(
+                    color: theme.colorScheme.primary,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Прислушайся к себе перед началом нового дня.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 28),
+          // Bento-сетка 2×2
+          Expanded(
+            child: GridView.count(
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              physics: const NeverScrollableScrollPhysics(),
+              children: _states.asMap().entries.map((e) {
+                final i = e.key;
+                final s = e.value;
+                final selected = _selectedState == s.value;
+                final accent = _accentColor(s.value, theme);
+                // Чередуем высоту через margin (имитация bento)
+                final topOffset = (i == 1 || i == 3) ? 24.0 : 0.0;
+                return Transform.translate(
+                  offset: Offset(0, topOffset),
+                  child: GestureDetector(
+                    onTap: () => _selectState(s.value),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: _cardColor(s.value, theme, selected),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: selected
+                              ? accent
+                              : theme.colorScheme.outlineVariant
+                                  .withValues(alpha: 0.5),
+                          width: selected ? 2 : 1,
+                        ),
+                        boxShadow: selected
+                            ? [
+                                BoxShadow(
+                                  color: accent.withValues(alpha: 0.12),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 4),
+                                )
+                              ]
+                            : [],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(s.emoji,
+                              style: TextStyle(
+                                fontSize: 32,
+                                color: selected ? null : null,
+                              )),
+                          const Spacer(),
+                          Text(
+                            s.label,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: selected
+                                  ? accent
+                                  : theme.colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            s.sub,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Подсказка при тревоге/усталости
+          if (_selectedState == 'Тревога') ...[
+            _AnxietyHint(),
+            const SizedBox(height: 12),
+          ] else if (_selectedState == 'Усталость') ...[
+            _TiredHint(),
+            const SizedBox(height: 12),
+          ],
+          // Кнопки
           SizedBox(
             width: double.infinity,
             child: FilledButton(
               onPressed: widget.onDone,
-              child: Text(_selectedState.isEmpty ? 'Начать день' : 'Вперёд'),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                shape: const StadiumBorder(),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    _selectedState.isEmpty ? 'Начать день' : 'Вперёд',
+                    style: const TextStyle(
+                        fontSize: 17, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.east, size: 18),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -240,20 +350,21 @@ class _MorningEntryState extends State<_MorningEntry> {
             width: double.infinity,
             child: TextButton(
               onPressed: widget.onDone,
-              child: const Text('Пропустить'),
+              child: Text(
+                'Пропустить настройку',
+                style: TextStyle(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontSize: 13,
+                  letterSpacing: 0.5,
+                ),
+              ),
             ),
           ),
+          const SizedBox(height: 16),
         ],
       ),
     );
   }
-
-  Color _stateColor(String state, ThemeData theme) => switch (state) {
-        'Усталость'     => Colors.orange,
-        'Тревога'       => Colors.red,
-        'Воодушевление' => theme.colorScheme.primary,
-        _               => theme.colorScheme.outline, // Обычное
-      };
 }
 
 // ── Дневной вход ─────────────────────────────────────────────
@@ -277,39 +388,67 @@ class _DayEntry extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Spacer(),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.bolt, size: 14, color: theme.colorScheme.primary),
+                const SizedBox(width: 6),
+                Text(
+                  'ДНЕВНОЙ ПОТОК',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.primary,
+                    letterSpacing: 1.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
           Text('Добрый день',
               style: theme.textTheme.displaySmall
                   ?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Text(
             allDone ? 'Дневные задачи выполнены 🎉' : 'Главное действие дня:',
-            style: theme.textTheme.titleMedium
+            style: theme.textTheme.bodyMedium
                 ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: 32),
           if (!allDone)
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: theme.colorScheme.primaryContainer,
                 borderRadius: BorderRadius.circular(20),
+                border: Border(
+                    left: BorderSide(
+                        color: theme.colorScheme.primary, width: 4)),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(task.title,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: theme.colorScheme.onPrimaryContainer,
-                      )),
-                ],
-              ),
+              child: Text(task.title,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onPrimaryContainer,
+                  )),
             ),
           const Spacer(),
           SizedBox(
             width: double.infinity,
             child: FilledButton(
-                onPressed: onDone, child: const Text('Открыть день')),
+              onPressed: onDone,
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                shape: const StadiumBorder(),
+              ),
+              child: const Text('Открыть день',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            ),
           ),
         ],
       ),
@@ -336,13 +475,37 @@ class _EveningEntry extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Spacer(),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.nights_stay_outlined,
+                    size: 14, color: theme.colorScheme.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Text(
+                  'ВЕЧЕРНИЙ ИТОГ',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    letterSpacing: 1.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
           Text('Добрый вечер',
               style: theme.textTheme.displaySmall
                   ?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Text(
             allDone ? 'Отличный день. Всё выполнено.' : 'Как прошёл день?',
-            style: theme.textTheme.titleMedium
+            style: theme.textTheme.bodyMedium
                 ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: 32),
@@ -357,7 +520,8 @@ class _EveningEntry extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Выполнено задач', style: theme.textTheme.bodyMedium),
+                    Text('Выполнено задач',
+                        style: theme.textTheme.bodyMedium),
                     Text('$completed / $total',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
@@ -367,11 +531,12 @@ class _EveningEntry extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(8),
                   child: LinearProgressIndicator(
                     value: total > 0 ? completed / total : 0,
                     minHeight: 8,
-                    backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                    backgroundColor:
+                        theme.colorScheme.surfaceContainerHighest,
                     valueColor: AlwaysStoppedAnimation(
                         allDone ? Colors.green : theme.colorScheme.primary),
                   ),
@@ -414,7 +579,14 @@ class _EveningEntry extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: FilledButton(
-                onPressed: onDone, child: const Text('Подвести итог')),
+              onPressed: onDone,
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                shape: const StadiumBorder(),
+              ),
+              child: const Text('Подвести итог',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            ),
           ),
         ],
       ),
@@ -430,16 +602,18 @@ class _AnxietyHint extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.blue.withValues(alpha: 0.08),
+        color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+        border: Border.all(
+            color: theme.colorScheme.secondary.withValues(alpha: 0.4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Дыхание — 60 секунд',
               style: theme.textTheme.labelMedium?.copyWith(
-                  color: Colors.blue.shade700, fontWeight: FontWeight.w600)),
+                  color: theme.colorScheme.secondary,
+                  fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
           Text(
             'Вдох 4 сек → задержка 4 → выдох 8. Три цикла.\nДлинный выдох снижает тревогу через блуждающий нерв.',
