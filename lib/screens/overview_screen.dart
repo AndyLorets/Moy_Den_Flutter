@@ -5,6 +5,7 @@ import '../models/task.dart';
 import '../models/state_config.dart';
 import '../widgets/tip_sheet.dart';
 import 'focus_mode_screen.dart';
+import 'task_builder_screen.dart';
 
 class OverviewScreen extends StatefulWidget {
   final VoidCallback onChanged;
@@ -20,31 +21,24 @@ class _OverviewScreenState extends State<OverviewScreen> {
   // 0=Все, 1=Утро, 2=День, 3=Вечер
   int _filterIndex = 0;
 
-  final _addMorningCtrl = TextEditingController();
-  final _addDayCtrl     = TextEditingController();
-  final _addEveningCtrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _addMorningCtrl.dispose();
-    _addDayCtrl.dispose();
-    _addEveningCtrl.dispose();
-    super.dispose();
-  }
-
   void _toggle(String id) {
     _ds.toggleTask(id);
     widget.onChanged();
     setState(() {});
   }
 
-  void _addCustom(String phase, TextEditingController ctrl) {
-    final text = ctrl.text.trim();
-    if (text.isEmpty) return;
-    _ds.addCustomTask(phase, text);
-    ctrl.clear();
-    widget.onChanged();
-    setState(() {});
+  Future<void> _openTaskBuilder({Task? existing, required String phase}) async {
+    final result = await Navigator.push<Task>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TaskBuilderScreen(existing: existing),
+      ),
+    );
+    if (result != null) {
+      _ds.saveCustomTask(result);
+      widget.onChanged();
+      setState(() {});
+    }
   }
 
   void _removeCustom(String phase, String id) {
@@ -222,12 +216,12 @@ class _OverviewScreenState extends State<OverviewScreen> {
                   if (_filterIndex == 0 || _filterIndex == 1) ...[
                     _PhaseSection(
                       label: '☀️ Утро',
+                      phase: 'morning',
                       visible: _morningVisible,
                       hidden: _morningHidden,
                       custom: _ds.getCustomTasks('morning'),
-                      addCtrl: _addMorningCtrl,
                       onToggle: _toggle,
-                      onAdd: () => _addCustom('morning', _addMorningCtrl),
+                      onOpenBuilder: (t) => _openTaskBuilder(existing: t, phase: 'morning'),
                       onRemove: (id) => _removeCustom('morning', id),
                       onFocus: _openFocus,
                     ),
@@ -236,12 +230,12 @@ class _OverviewScreenState extends State<OverviewScreen> {
                     if (_filterIndex == 0) const SizedBox(height: 8),
                     _PhaseSection(
                       label: '⚡ День',
+                      phase: 'day',
                       visible: _dayVisible,
                       hidden: _dayHidden,
                       custom: _ds.getCustomTasks('day'),
-                      addCtrl: _addDayCtrl,
                       onToggle: _toggle,
-                      onAdd: () => _addCustom('day', _addDayCtrl),
+                      onOpenBuilder: (t) => _openTaskBuilder(existing: t, phase: 'day'),
                       onRemove: (id) => _removeCustom('day', id),
                       onFocus: _openFocus,
                     ),
@@ -250,12 +244,12 @@ class _OverviewScreenState extends State<OverviewScreen> {
                     if (_filterIndex == 0) const SizedBox(height: 8),
                     _PhaseSection(
                       label: '🌙 Вечер',
+                      phase: 'evening',
                       visible: _eveningVisible,
                       hidden: _eveningHidden,
                       custom: _ds.getCustomTasks('evening'),
-                      addCtrl: _addEveningCtrl,
                       onToggle: _toggle,
-                      onAdd: () => _addCustom('evening', _addEveningCtrl),
+                      onOpenBuilder: (t) => _openTaskBuilder(existing: t, phase: 'evening'),
                       onRemove: (id) => _removeCustom('evening', id),
                       onFocus: _openFocus,
                     ),
@@ -280,23 +274,23 @@ class _OverviewScreenState extends State<OverviewScreen> {
 // ── Секция фазы ───────────────────────────────────────────────
 class _PhaseSection extends StatelessWidget {
   final String label;
+  final String phase;
   final List<Task> visible;
   final List<Task> hidden;
   final List<Task> custom;
-  final TextEditingController addCtrl;
   final ValueChanged<String> onToggle;
-  final VoidCallback onAdd;
+  final ValueChanged<Task?> onOpenBuilder; // null = новая задача
   final ValueChanged<String> onRemove;
   final ValueChanged<Task> onFocus;
 
   const _PhaseSection({
     required this.label,
+    required this.phase,
     required this.visible,
     required this.hidden,
     required this.custom,
-    required this.addCtrl,
     required this.onToggle,
-    required this.onAdd,
+    required this.onOpenBuilder,
     required this.onRemove,
     required this.onFocus,
   });
@@ -388,11 +382,12 @@ class _PhaseSection extends StatelessWidget {
                 task: t,
                 done: ds.isTaskDone(t.id),
                 onToggle: () => onToggle(t.id),
+                onEdit: () => onOpenBuilder(t),
                 onDelete: () => onRemove(t.id),
               ),
             )),
         // Добавить задачу
-        _AddTaskRow(ctrl: addCtrl, onAdd: onAdd),
+        _AddTaskButton(onTap: () => onOpenBuilder(null)),
         // Заблокированные
         if (hidden.isNotEmpty) ...[
           Padding(
@@ -840,12 +835,14 @@ class _CustomTaskCard extends StatelessWidget {
   final Task task;
   final bool done;
   final VoidCallback onToggle;
+  final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   const _CustomTaskCard({
     required this.task,
     required this.done,
     required this.onToggle,
+    required this.onEdit,
     required this.onDelete,
   });
 
@@ -857,6 +854,9 @@ class _CustomTaskCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
       ),
       child: Row(
         children: [
@@ -868,8 +868,7 @@ class _CustomTaskCard extends StatelessWidget {
               height: 22,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color:
-                    done ? theme.colorScheme.primary : Colors.transparent,
+                color: done ? theme.colorScheme.primary : Colors.transparent,
                 border: Border.all(
                   color: done
                       ? theme.colorScheme.primary
@@ -884,12 +883,31 @@ class _CustomTaskCard extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              task.title,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                decoration: done ? TextDecoration.lineThrough : null,
-                color: done ? theme.colorScheme.onSurfaceVariant : null,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  task.title,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    decoration: done ? TextDecoration.lineThrough : null,
+                    color: done ? theme.colorScheme.onSurfaceVariant : null,
+                  ),
+                ),
+                Text(
+                  '${task.energyCost}% · ${_priorityLabel(task.priority)}',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: onEdit,
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(Icons.edit_outlined,
+                  size: 18, color: theme.colorScheme.onSurfaceVariant),
             ),
           ),
           GestureDetector(
@@ -904,54 +922,50 @@ class _CustomTaskCard extends StatelessWidget {
       ),
     );
   }
+
+  String _priorityLabel(Priority p) => switch (p) {
+    Priority.P0 => 'Якорь',
+    Priority.P1 => 'Цель',
+    Priority.P2 => 'Бонус',
+  };
 }
 
-// ── Строка добавления задачи ──────────────────────────────────
-class _AddTaskRow extends StatelessWidget {
-  final TextEditingController ctrl;
-  final VoidCallback onAdd;
-
-  const _AddTaskRow({required this.ctrl, required this.onAdd});
+// ── Кнопка добавления задачи ──────────────────────────────────
+class _AddTaskButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _AddTaskButton({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: ctrl,
-              decoration: InputDecoration(
-                hintText: 'Добавить задачу...',
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(
-                      color: theme.colorScheme.outlineVariant),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: theme.colorScheme.outlineVariant,
+              style: BorderStyle.solid,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.add, size: 18, color: theme.colorScheme.primary),
+              const SizedBox(width: 10),
+              Text(
+                'Добавить задачу',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
-              onSubmitted: (_) => onAdd(),
-            ),
+            ],
           ),
-          const SizedBox(width: 8),
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.secondaryContainer,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: IconButton(
-              onPressed: onAdd,
-              icon: Icon(Icons.add,
-                  color: theme.colorScheme.onSecondaryContainer),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

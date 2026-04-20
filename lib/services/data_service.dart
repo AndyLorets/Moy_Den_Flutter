@@ -229,48 +229,68 @@ class DataService {
   List<Task> getCustomTasks(String phase) {
     final key = 'cu_$phase';
     final json = _p.getString(key) ?? '[]';
-    final phaseEnum = switch (phase) {
-      'morning' => Phase.morning,
-      'day' => Phase.day,
-      _ => Phase.evening,
-    };
     try {
       final list = jsonDecode(json) as List;
-      return list
-          .map((e) => Task(
-                id: e['id'] as String,
-                title: e['text'] as String,
-                phase: phaseEnum,
-                priority: Priority.P1,
-                energyCost: 15,
-                tags: [],
-                isCustom: true,
-              ))
-          .toList();
+      return list.map((e) {
+        // Поддержка старого формата {id, text} и нового {Task.toJson()}
+        if (e.containsKey('text') && !e.containsKey('title')) {
+          final phaseEnum = switch (phase) {
+            'morning' => Phase.morning,
+            'day' => Phase.day,
+            _ => Phase.evening,
+          };
+          return Task(
+            id: e['id'] as String,
+            title: e['text'] as String,
+            phase: phaseEnum,
+            priority: Priority.P1,
+            energyCost: 15,
+            tags: [],
+            isCustom: true,
+          );
+        }
+        return Task.fromJson(e as Map<String, dynamic>);
+      }).toList();
     } catch (_) {
       return [];
     }
   }
 
-  void addCustomTask(String phase, String text) {
+  void saveCustomTask(Task task) {
+    final phase = task.phase.name;
     final key = 'cu_$phase';
     final tasks = getCustomTasks(phase);
-    final newTask = {
-      'id': 'cu_${DateTime.now().millisecondsSinceEpoch}',
-      'text': text
+    final idx = tasks.indexWhere((t) => t.id == task.id);
+    if (idx >= 0) {
+      tasks[idx] = task;
+    } else {
+      tasks.add(task);
+    }
+    _p.setString(key, jsonEncode(tasks.map((t) => t.toJson()).toList()));
+  }
+
+  // Оставляем для совместимости — создаёт простую задачу только с текстом
+  void addCustomTask(String phase, String text) {
+    final phaseEnum = switch (phase) {
+      'morning' => Phase.morning,
+      'day' => Phase.day,
+      _ => Phase.evening,
     };
-    final encoded = jsonEncode([
-      ...tasks.map((t) => {'id': t.id, 'text': t.title}),
-      newTask
-    ]);
-    _p.setString(key, encoded);
+    saveCustomTask(Task(
+      id: 'cu_${DateTime.now().millisecondsSinceEpoch}',
+      title: text,
+      phase: phaseEnum,
+      priority: Priority.P1,
+      energyCost: 15,
+      tags: [],
+      isCustom: true,
+    ));
   }
 
   void removeCustomTask(String phase, String id) {
     final key = 'cu_$phase';
     final tasks = getCustomTasks(phase).where((t) => t.id != id).toList();
-    _p.setString(key,
-        jsonEncode(tasks.map((t) => {'id': t.id, 'text': t.title}).toList()));
+    _p.setString(key, jsonEncode(tasks.map((t) => t.toJson()).toList()));
   }
 
   // ── Выполнение задач ────────────────────────────────────
@@ -423,6 +443,9 @@ class DataService {
       }
     }
   }
+
+  // ── Прямой доступ к prefs (для ProfileService) ──────────────
+  void setRawPref(String key, String value) => _p.setString(key, value);
 
   // ── Экспорт/импорт для Gist ─────────────────────────────
   Map<String, dynamic> exportData() {
